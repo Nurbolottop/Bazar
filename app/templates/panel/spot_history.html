@@ -1,0 +1,24 @@
+{% extends 'panel/base.html' %}
+{% block title %}История места {{ spot.code }}{% endblock %}
+{% block content %}
+<h1>Место {{ spot.code }} · {{ spot.building.name }}
+  <span class="status {{ spot.status }}">{{ spot.get_status_display }}</span></h1>
+<p class="muted">Какие арендаторы и в какие периоды занимали место (FR-SP-06).</p>
+<div class="panel">
+  <table>
+    <tr><th>Арендатор</th><th>ИНН</th><th class="num">Сумма/мес</th><th>С</th><th>По</th><th>Статус</th></tr>
+    {% for ts in history %}
+    <tr>
+      <td><a href="{% url 'panel:tenant_detail' ts.tenant_id %}">{{ ts.tenant.full_name }}</a></td>
+      <td class="mono">{{ ts.tenant.inn }}</td>
+      <td class="num mono">{{ ts.monthly_amount|money }}</td>
+      <td>{{ ts.start_date|date:'d.m.Y' }}</td>
+      <td>{{ ts.end_date|date:'d.m.Y'|default:'—' }}</td>
+      <td>{% if ts.is_active %}<span class="status active">занимает</span>
+          {% else %}<span class="status cancelled">завершено</span>{% endif %}</td>
+    </tr>
+    {% empty %}<tr><td colspan="6" class="muted">Место никем не занималось</td></tr>{% endfor %}
+  </table>
+</div>
+<a class="btn" href="{% url 'panel:spots' %}">← К списку мест</a>
+{% endblock %}

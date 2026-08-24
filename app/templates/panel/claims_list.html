@@ -1,0 +1,61 @@
+{% extends 'panel/base.html' %}
+{% block title %}Заявки об оплате{% endblock %}
+{% block content %}
+<h1>Заявки об оплате</h1>
+
+<div class="filters">
+  <form method="get" class="filters">
+    <select name="status" onchange="this.form.submit()">
+      <option value="all" {% if status == 'all' %}selected{% endif %}>Все статусы</option>
+      {% for value, label in statuses %}
+      <option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </form>
+</div>
+
+<div class="panel">
+  <table>
+    <tr><th>№</th><th>Подана</th><th>Арендатор</th><th class="num">Сумма</th>
+        <th>Чек</th><th>Статус</th><th>Действия</th></tr>
+    {% for claim in page %}
+    <tr>
+      <td><a href="{% url 'panel:claim_detail' claim.pk %}">#{{ claim.pk }}</a></td>
+      <td>{{ claim.submitted_at|date:'d.m.Y H:i' }}</td>
+      <td><a href="{% url 'panel:tenant_detail' claim.tenant_id %}">{{ claim.tenant.full_name }}</a></td>
+      <td class="num mono">{{ claim.declared_amount|money }}</td>
+      <td>{% if claim.receipt_image %}
+        <img class="receipt-thumb" src="{{ claim.receipt_image.url }}" onclick="showImage('{{ claim.receipt_image.url }}')" alt="чек">
+      {% endif %}</td>
+      <td><span class="status {{ claim.status }}">{{ claim.get_status_display }}</span></td>
+      <td>
+        {% if claim.status == 'pending' %}
+        <form class="inline" method="post" action="{% url 'panel:claim_confirm' claim.pk %}"
+              onsubmit="return confirm('Подтвердить оплату {{ claim.declared_amount }} сом?')">
+          {% csrf_token %}<button class="btn small primary">Подтвердить</button>
+        </form>
+        <form class="inline" method="post" action="{% url 'panel:claim_reject' claim.pk %}"
+              onsubmit="return rejectPrompt(this)">
+          {% csrf_token %}<input type="hidden" name="reason">
+          <button class="btn small danger">Отклонить</button>
+        </form>
+        {% endif %}
+      </td>
+    </tr>
+    {% empty %}<tr><td colspan="7" class="muted">Заявок нет</td></tr>{% endfor %}
+  </table>
+  {% include 'panel/_pagination.html' %}
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const REASONS = {{ reject_reasons|safe }};
+function rejectPrompt(form) {
+  const hint = REASONS.length ? '\n\nЧастые причины:\n— ' + REASONS.join('\n— ') : '';
+  const reason = prompt('Причина отклонения (обязательно):' + hint);
+  if (!reason) return false;
+  form.querySelector('[name=reason]').value = reason;
+  return true;
+}
+</script>
+{% endblock %}

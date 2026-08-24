@@ -1,0 +1,28 @@
+{% load static %}<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Вход · Bazar</title>
+<link rel="stylesheet" href="{% static 'css/panel.css' %}">
+</head>
+<body>
+<div class="login-page">
+  <form class="login-box" method="post">
+    {% csrf_token %}
+    <h1>Панель администрации</h1>
+    <p class="muted" style="text-align:center;margin:8px 0 18px">Учёт аренды торговых мест</p>
+    {% if error %}<div class="msg error">{{ error }}</div>{% endif %}
+    <div class="field">
+      <label>Логин</label>
+      <input type="text" name="username" style="width:100%" required autofocus>
+    </div>
+    <div class="field">
+      <label>Пароль</label>
+      <input type="password" name="password" style="width:100%" required>
+    </div>
+    <button class="btn primary" type="submit">Войти</button>
+  </form>
+</div>
+</body>
+</html>

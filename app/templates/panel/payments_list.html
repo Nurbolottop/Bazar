@@ -1,0 +1,58 @@
+{% extends 'panel/base.html' %}
+{% block title %}Платежи{% endblock %}
+{% block content %}
+<h1>Платежи</h1>
+
+<div class="filters">
+  <form method="get" class="filters">
+    <input type="text" name="q" value="{{ q }}" placeholder="ФИО или ИНН">
+    <select name="status">
+      <option value="">Все</option>
+      {% for value, label in statuses %}
+      <option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn">Показать</button>
+  </form>
+</div>
+
+<div class="panel">
+  <table>
+    <tr><th>Дата</th><th>Арендатор</th><th class="num">Сумма</th><th>Источник</th>
+        <th>Кто подтвердил</th><th>Чек</th><th>Статус</th><th></th></tr>
+    {% for p in page %}
+    <tr>
+      <td>{{ p.paid_at|date:'d.m.Y H:i' }}</td>
+      <td><a href="{% url 'panel:tenant_detail' p.tenant_id %}">{{ p.tenant.full_name }}</a></td>
+      <td class="num mono">{{ p.amount|money }}</td>
+      <td>{{ p.get_source_display }}</td>
+      <td class="muted">{{ p.created_by.username|default:'—' }}</td>
+      <td>{% if p.claim and p.claim.receipt_image %}
+        <img class="receipt-thumb" src="{{ p.claim.receipt_image.url }}"
+             onclick="showImage('{{ p.claim.receipt_image.url }}')" alt="чек">
+      {% else %}—{% endif %}</td>
+      <td><span class="status {{ p.status }}">{{ p.get_status_display }}</span>
+        {% if p.reversed_reason %}<div class="muted">{{ p.reversed_reason }}</div>{% endif %}</td>
+      <td>{% if p.status == 'active' %}
+        <form class="inline" method="post" action="{% url 'panel:payment_reverse' p.pk %}"
+              onsubmit="return reverseReason(this)">
+          {% csrf_token %}<input type="hidden" name="reason">
+          <button class="btn small danger">Сторно</button>
+        </form>
+      {% endif %}</td>
+    </tr>
+    {% empty %}<tr><td colspan="8" class="muted">Платежей нет</td></tr>{% endfor %}
+  </table>
+  {% include 'panel/_pagination.html' %}
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function reverseReason(form) {
+  const reason = prompt('Причина отмены платежа (обязательно). Долг арендатора будет восстановлен:');
+  if (!reason) return false;
+  form.querySelector('[name=reason]').value = reason;
+  return true;
+}
+</script>
+{% endblock %}

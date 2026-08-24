@@ -1,0 +1,56 @@
+{% extends 'panel/base.html' %}
+{% block title %}Администраторы{% endblock %}
+{% block content %}
+<h1>Администраторы</h1>
+<div class="panel">
+  <table>
+    <tr><th>Логин</th><th>Состояние</th><th>Последний вход</th><th>Действия</th></tr>
+    {% for admin in admins %}
+    <tr>
+      <td>{{ admin.username }}{% if admin.pk == request.user.pk %} <span class="muted">(вы)</span>{% endif %}</td>
+      <td>{% if admin.is_active %}<span class="status active">активен</span>
+          {% else %}<span class="status archived">заблокирован</span>{% endif %}</td>
+      <td>{{ admin.last_login|date:'d.m.Y H:i'|default:'—' }}</td>
+      <td>
+        {% if admin.pk != request.user.pk %}
+        <form class="inline" method="post" onsubmit="return confirm('Изменить состояние?')">
+          {% csrf_token %}
+          <input type="hidden" name="user_id" value="{{ admin.pk }}">
+          <button class="btn small" name="action" value="{% if admin.is_active %}block{% else %}unblock{% endif %}">
+            {% if admin.is_active %}Заблокировать{% else %}Разблокировать{% endif %}</button>
+        </form>
+        {% endif %}
+        <form class="inline" method="post" onsubmit="return passwordPrompt(this)">
+          {% csrf_token %}
+          <input type="hidden" name="user_id" value="{{ admin.pk }}">
+          <input type="hidden" name="password">
+          <button class="btn small" name="action" value="set_password">Сменить пароль</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+
+<h2>Новый администратор</h2>
+<div class="panel" style="max-width:460px">
+  <form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="create">
+    <div class="field"><label>Логин</label><input type="text" name="username" required></div>
+    <div class="field"><label>Пароль (не менее 10 символов)</label>
+      <input type="password" name="password" minlength="10" required></div>
+    <button class="btn primary">Создать</button>
+  </form>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function passwordPrompt(form) {
+  const password = prompt('Новый пароль (не менее 10 символов):');
+  if (!password) return false;
+  form.querySelector('[name=password]').value = password;
+  return true;
+}
+</script>
+{% endblock %}

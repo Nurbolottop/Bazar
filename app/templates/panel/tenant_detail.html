@@ -1,0 +1,181 @@
+{% extends 'panel/base.html' %}
+{% block title %}{{ tenant.full_name }}{% endblock %}
+{% block content %}
+<h1>{{ tenant.full_name }}
+  <span class="status {{ tenant.status }}">{{ tenant.get_status_display }}</span>
+  <a class="btn small" href="{% url 'panel:tenant_edit' tenant.pk %}">Редактировать</a>
+</h1>
+
+<div class="cards">
+  <div class="card"><div class="label">ИНН (логин в приложении)</div>
+    <div class="value" style="font-size:18px">{{ tenant.inn }}</div>
+    <div class="muted">{{ tenant.phone|default:'' }} {{ tenant.address|default:'' }}</div></div>
+  <div class="card"><div class="label">Долг</div>
+    <div class="value danger">{{ balance.debt_amount|default:'0'|money }} сом</div></div>
+  <div class="card"><div class="label">Аванс</div>
+    <div class="value">{{ balance.advance_amount|default:'0'|money }} сом</div></div>
+  <div class="card"><div class="label">Согласие на обработку ПДн</div>
+    <div>{% if tenant.consent_accepted_at %}принято {{ tenant.consent_accepted_at|date:'d.m.Y' }}
+      (версия {{ tenant.consent_version }}){% else %}<span class="muted">ещё не принято</span>{% endif %}</div>
+    <div class="muted">Язык: {{ tenant.get_language_display }}</div></div>
+</div>
+
+<div class="panel">
+  <h2 style="margin-top:0">Действия</h2>
+  <form class="inline" method="post" action="{% url 'panel:tenant_manual_payment' tenant.pk %}"
+        onsubmit="return confirm('Внести платёж?')">
+    {% csrf_token %}
+    <input type="text" name="amount" placeholder="Сумма" class="amount-input">
+    <input type="text" name="comment" placeholder="Комментарий">
+    <button class="btn primary small">Внести платёж</button>
+  </form>
+  &nbsp;·&nbsp;
+  <form class="inline" method="post" action="{% url 'panel:tenant_adjust_debt' tenant.pk %}"
+        onsubmit="return confirm('Провести корректировку долга?')">
+    {% csrf_token %}
+    <select name="direction">
+      <option value="minus">Уменьшить долг</option>
+      <option value="plus">Увеличить долг</option>
+    </select>
+    <input type="text" name="amount" placeholder="Сумма" class="amount-input">
+    <input type="text" name="reason" placeholder="Причина (обязательно)" required>
+    <button class="btn small">Корректировать долг</button>
+  </form>
+  &nbsp;·&nbsp;
+  <form class="inline" method="post" action="{% url 'panel:tenant_manual_charge' tenant.pk %}"
+        onsubmit="return confirm('Создать разовое начисление?')">
+    {% csrf_token %}
+    <input type="text" name="amount" placeholder="Сумма" class="amount-input">
+    <input type="text" name="comment" placeholder="Комментарий">
+    <button class="btn small">Разовое начисление</button>
+  </form>
+  <hr style="border:none;border-top:1px solid var(--border);margin:12px 0">
+  <form class="inline" method="post" action="{% url 'panel:tenant_set_status' tenant.pk %}"
+        onsubmit="return confirm('Сменить статус арендатора?')">
+    {% csrf_token %}
+    <select name="status">
+      {% for value, label in statuses %}
+      <option value="{{ value }}" {% if tenant.status == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn small">Сменить статус</button>
+  </form>
+  &nbsp;·&nbsp;
+  <form class="inline" method="post" action="{% url 'panel:tenant_revoke_tokens' tenant.pk %}"
+        onsubmit="return confirm('Отозвать все токены доступа арендатора?')">
+    {% csrf_token %}<button class="btn small danger">Отозвать токены приложения</button>
+  </form>
+</div>
+
+<div class="panel">
+  <h2 style="margin-top:0">Торговые места</h2>
+  <table>
+    <tr><th>Место</th><th>Корпус</th><th class="num">Сумма/мес</th><th>С</th><th>По</th><th></th></tr>
+    {% for ts in tenant_spots %}
+    <tr {% if not ts.is_active %}style="opacity:.5"{% endif %}>
+      <td>{{ ts.spot.code }}</td>
+      <td>{{ ts.spot.building.name }}</td>
+      <td class="num mono">{{ ts.monthly_amount|money }}</td>
+      <td>{{ ts.start_date|date:'d.m.Y' }}</td>
+      <td>{{ ts.end_date|date:'d.m.Y'|default:'—' }}</td>
+      <td>{% if ts.is_active %}
+        <form class="inline" method="post" action="{% url 'panel:tenant_release_spot' tenant.pk ts.pk %}"
+              onsubmit="return confirm('Освободить место {{ ts.spot.code }}?')">
+          {% csrf_token %}<button class="btn small">Освободить</button>
+        </form>
+      {% endif %}</td>
+    </tr>
+    {% empty %}<tr><td colspan="6" class="muted">Мест нет</td></tr>{% endfor %}
+  </table>
+  <form method="post" action="{% url 'panel:tenant_assign_spot' tenant.pk %}" style="margin-top:12px">
+    {% csrf_token %}
+    <select name="spot_id" required>
+      <option value="">— свободное место —</option>
+      {% for spot in free_spots %}<option value="{{ spot.pk }}">{{ spot.code }} ({{ spot.building.name }})</option>{% endfor %}
+    </select>
+    <input type="text" name="monthly_amount" placeholder="Сумма аренды/мес" class="amount-input" required>
+    <button class="btn primary small">Привязать место</button>
+  </form>
+</div>
+
+<div class="panel">
+  <h2 style="margin-top:0">Начисления</h2>
+  <table>
+    <tr><th>Период</th><th>Место</th><th class="num">Сумма</th><th class="num">Оплачено</th>
+        <th>Срок</th><th>Статус</th><th>Происхождение</th><th></th></tr>
+    {% for c in charges %}
+    <tr>
+      <td>{{ c.period_month }}.{{ c.period_year }}</td>
+      <td>{{ c.tenant_spot.spot.code|default:'—' }}</td>
+      <td class="num mono">{{ c.amount|money }}</td>
+      <td class="num mono">{{ c.paid_amount|money }}</td>
+      <td>{{ c.due_date|date:'d.m.Y' }}</td>
+      <td><span class="status {{ c.status }}">{{ c.get_status_display }}</span></td>
+      <td class="muted">{{ c.get_source_display }}{% if c.comment %} · {{ c.comment }}{% endif %}</td>
+      <td>{% if c.status != 'cancelled' and c.status != 'paid' %}
+        <form class="inline" method="post" action="{% url 'panel:charge_cancel' c.pk %}"
+              onsubmit="return cancelReason(this)">
+          {% csrf_token %}
+          <input type="hidden" name="reason">
+          <input type="hidden" name="next" value="{% url 'panel:tenant_detail' tenant.pk %}">
+          <button class="btn small danger">Отменить</button>
+        </form>
+      {% endif %}</td>
+    </tr>
+    {% empty %}<tr><td colspan="8" class="muted">Начислений нет</td></tr>{% endfor %}
+  </table>
+</div>
+
+<div class="panel">
+  <h2 style="margin-top:0">Платежи и корректировки</h2>
+  <table>
+    <tr><th>Дата</th><th>Тип</th><th class="num">Сумма</th><th>Статус</th><th>Комментарий</th></tr>
+    {% for p in payments %}
+    <tr>
+      <td>{{ p.paid_at|date:'d.m.Y H:i' }}</td>
+      <td>{{ p.get_source_display }}</td>
+      <td class="num mono">{{ p.amount|money }}</td>
+      <td><span class="status {{ p.status }}">{{ p.get_status_display }}</span></td>
+      <td class="muted">{{ p.comment|default:'' }}{{ p.reversed_reason }}</td>
+    </tr>
+    {% endfor %}
+    {% for a in adjustments %}
+    <tr>
+      <td>{{ a.created_at|date:'d.m.Y H:i' }}</td>
+      <td>Корректировка долга</td>
+      <td class="num mono">{{ a.amount|money }}</td>
+      <td><span class="status {{ a.status }}">{{ a.get_status_display }}</span></td>
+      <td class="muted">{{ a.reason }}</td>
+    </tr>
+    {% endfor %}
+    {% if not payments and not adjustments %}<tr><td colspan="5" class="muted">Операций нет</td></tr>{% endif %}
+  </table>
+</div>
+
+<div class="panel">
+  <h2 style="margin-top:0">Документы</h2>
+  <table>
+    {% for doc in documents %}
+    <tr><td><a href="{{ doc.file.url }}" target="_blank">{{ doc.title }}</a></td>
+        <td class="muted">{{ doc.uploaded_at|date:'d.m.Y' }}</td></tr>
+    {% empty %}<tr><td class="muted">Документов нет</td></tr>{% endfor %}
+  </table>
+  <form method="post" action="{% url 'panel:tenant_upload_document' tenant.pk %}"
+        enctype="multipart/form-data" style="margin-top:10px">
+    {% csrf_token %}
+    <input type="text" name="title" placeholder="Название">
+    <input type="file" name="file" required>
+    <button class="btn small">Загрузить</button>
+  </form>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function cancelReason(form) {
+  const reason = prompt('Причина отмены начисления (обязательно):');
+  if (!reason) return false;
+  form.querySelector('[name=reason]').value = reason;
+  return true;
+}
+</script>
+{% endblock %}

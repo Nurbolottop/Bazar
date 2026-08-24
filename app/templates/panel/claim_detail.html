@@ -1,0 +1,81 @@
+{% extends 'panel/base.html' %}
+{% block title %}Заявка #{{ claim.pk }}{% endblock %}
+{% block content %}
+<h1>Заявка #{{ claim.pk }} — <span class="status {{ claim.status }}">{{ claim.get_status_display }}</span></h1>
+
+<div class="cards">
+  <div class="card">
+    <div class="label">Арендатор</div>
+    <div><a href="{% url 'panel:tenant_detail' claim.tenant_id %}">{{ claim.tenant.full_name }}</a></div>
+    <div class="muted">ИНН {{ claim.tenant.inn }} · {{ claim.tenant.phone|default:'—' }}</div>
+  </div>
+  <div class="card">
+    <div class="label">Заявленная сумма</div>
+    <div class="value">{{ claim.declared_amount|money }} сом</div>
+    <div class="muted">Подана {{ claim.submitted_at|date:'d.m.Y H:i' }}</div>
+  </div>
+  <div class="card">
+    <div class="label">Текущий долг арендатора</div>
+    <div class="value danger">{{ balance.debt_amount|default:'0'|money }} сом</div>
+    <div class="muted">Аванс: {{ balance.advance_amount|default:'0'|money }} сом</div>
+  </div>
+</div>
+
+<div class="panel" style="display:flex;gap:24px;flex-wrap:wrap">
+  <div style="flex:1;min-width:320px">
+    <h2 style="margin-top:0">Фотография чека</h2>
+    {% if claim.receipt_image %}
+      <img class="receipt-full" src="{{ claim.receipt_image.url }}"
+           onclick="showImage('{{ claim.receipt_image.url }}')" alt="чек">
+      <p class="muted">Нажмите для увеличения</p>
+    {% else %}<p class="muted">Файл отсутствует</p>{% endif %}
+    {% if claim.comment %}<p><b>Комментарий арендатора:</b> {{ claim.comment }}</p>{% endif %}
+    {% if claim.reject_reason %}<p><b>Причина отклонения:</b> {{ claim.reject_reason }}</p>{% endif %}
+  </div>
+
+  <div style="flex:1;min-width:320px">
+    <h2 style="margin-top:0">Последние начисления</h2>
+    <table>
+      <tr><th>Период</th><th class="num">Сумма</th><th class="num">Оплачено</th><th>Срок</th><th>Статус</th></tr>
+      {% for c in last_charges %}
+      <tr>
+        <td>{{ c.period_month }}.{{ c.period_year }}</td>
+        <td class="num mono">{{ c.amount|money }}</td>
+        <td class="num mono">{{ c.paid_amount|money }}</td>
+        <td>{{ c.due_date|date:'d.m.Y' }}</td>
+        <td><span class="status {{ c.status }}">{{ c.get_status_display }}</span></td>
+      </tr>
+      {% empty %}<tr><td colspan="5" class="muted">Начислений нет</td></tr>{% endfor %}
+    </table>
+
+    {% if claim.status == 'pending' %}
+    <h2>Решение</h2>
+    <form method="post" action="{% url 'panel:claim_confirm' claim.pk %}"
+          onsubmit="return confirm('Подтвердить оплату?')">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{% url 'panel:claims' %}">
+      <div class="field">
+        <label>Сумма к зачислению (исправьте, если не совпадает с чеком — исходное значение
+          сохранится в журнале)</label>
+        <input type="text" name="amount" value="{{ claim.declared_amount }}" class="amount-input">
+        <span>сом</span>
+      </div>
+      <button class="btn primary">Подтвердить</button>
+    </form>
+    <form method="post" action="{% url 'panel:claim_reject' claim.pk %}" style="margin-top:14px">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{% url 'panel:claims' %}">
+      <div class="field">
+        <label>Причина отклонения</label>
+        <select name="reason">
+          <option value="">— выбрать или вписать ниже —</option>
+          {% for reason in reject_reasons %}<option>{{ reason }}</option>{% endfor %}
+        </select>
+        <input type="text" name="reason_custom" placeholder="Своя причина" style="margin-top:6px;width:100%">
+      </div>
+      <button class="btn danger">Отклонить</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

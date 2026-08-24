@@ -1,0 +1,50 @@
+{% extends 'panel/base.html' %}
+{% block title %}Суммы аренды{% endblock %}
+{% block content %}
+<h1>Массовое редактирование сумм</h1>
+<p class="muted">Исправьте суммы перед началом месяца и сохраните одним действием (FR-CH-03).
+Изменённые ячейки подсвечиваются.</p>
+
+<form method="post" id="amounts-form">
+  {% csrf_token %}
+  <div class="panel">
+    <table>
+      <tr><th>Арендатор</th><th>ИНН</th><th>Место</th><th>Корпус</th>
+          <th class="num">Сумма аренды, сом</th></tr>
+      {% for ts in rows %}
+      <tr>
+        <td><a href="{% url 'panel:tenant_detail' ts.tenant_id %}">{{ ts.tenant.full_name }}</a></td>
+        <td class="mono">{{ ts.tenant.inn }}</td>
+        <td>{{ ts.spot.code }}</td>
+        <td>{{ ts.spot.building.name }}</td>
+        <td class="num">
+          <input type="text" name="amount_{{ ts.pk }}" value="{{ ts.monthly_amount }}"
+                 data-original="{{ ts.monthly_amount }}" class="amount-input"
+                 oninput="markChanged(this)">
+        </td>
+      </tr>
+      {% empty %}<tr><td colspan="5" class="muted">Активных привязок мест нет</td></tr>{% endfor %}
+    </table>
+  </div>
+  <button class="btn primary" onclick="return confirmSave()">Сохранить все изменения</button>
+  <span class="muted" id="changed-hint"></span>
+</form>
+{% endblock %}
+{% block scripts %}
+<script>
+function markChanged(input) {
+  const changed = input.value.trim() !== input.dataset.original;
+  input.style.background = changed ? '#fff3e0' : '';
+  const count = document.querySelectorAll('#amounts-form input.amount-input')
+    .values().reduce((n, el) => n + (el.value.trim() !== el.dataset.original ? 1 : 0), 0);
+  document.getElementById('changed-hint').textContent =
+    count ? 'Изменено: ' + count : '';
+}
+function confirmSave() {
+  const changed = [...document.querySelectorAll('#amounts-form input.amount-input')]
+    .filter(el => el.value.trim() !== el.dataset.original);
+  if (!changed.length) { alert('Изменений нет.'); return false; }
+  return confirm('Сохранить изменения по ' + changed.length + ' позициям? Суммы применятся при следующем прогоне начислений.');
+}
+</script>
+{% endblock %}

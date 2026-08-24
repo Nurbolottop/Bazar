@@ -1,0 +1,47 @@
+{% extends 'panel/base.html' %}
+{% block title %}Импорт данных{% endblock %}
+{% block content %}
+<h1>Импорт данных из Excel</h1>
+<p class="muted">Файл по шаблону: корпус, код места, тип, площадь, ФИО, ИНН, паспорт, телефон,
+сумма аренды, дата начисления, срок оплаты, долг на начало работы Системы.
+Сначала выполните <b>пробный прогон</b>, исправьте ошибки, затем — окончательный (ТЗ-00 раздел 9).</p>
+
+<div class="panel" style="max-width:640px">
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="field"><label>Файл XLSX</label>
+      <input type="file" name="file" accept=".xlsx" required></div>
+    <button class="btn" name="mode" value="dry">Пробный прогон</button>
+    <button class="btn primary" name="mode" value="final"
+            onclick="return confirm('Выполнить окончательный импорт? Данные будут записаны в базу.')">
+      Окончательный импорт</button>
+    <a class="btn" href="{% url 'panel:import_template' %}">Скачать шаблон</a>
+  </form>
+</div>
+
+{% if report %}
+<h2>Итоги {% if mode == 'final' and report.ok %}импорта{% else %}проверки{% endif %}</h2>
+<div class="cards">
+  <div class="card"><div class="label">Корпусов будет создано</div><div class="value">{{ report.created_buildings }}</div></div>
+  <div class="card"><div class="label">Мест будет создано</div><div class="value">{{ report.created_spots }}</div></div>
+  <div class="card"><div class="label">Арендаторов новых / обновлённых</div>
+    <div class="value">{{ report.created_tenants }} / {{ report.updated_tenants }}</div></div>
+  <div class="card"><div class="label">Начальный долг (строк / сумма)</div>
+    <div class="value" style="font-size:20px">{{ report.initial_debt_rows }} / {{ report.total_initial_debt|money }} сом</div></div>
+</div>
+
+{% if report.errors %}
+<div class="panel">
+  <h2 style="margin-top:0;color:var(--danger)">Ошибки ({{ report.errors|length }})</h2>
+  <table>
+    <tr><th>Строка</th><th>Поле</th><th>Описание</th></tr>
+    {% for e in report.errors %}
+    <tr><td>{{ e.row }}</td><td>{{ e.field }}</td><td>{{ e.message }}</td></tr>
+    {% endfor %}
+  </table>
+</div>
+{% elif mode != 'final' %}
+<div class="msg success">Ошибок не найдено. Можно выполнять окончательный импорт.</div>
+{% endif %}
+{% endif %}
+{% endblock %}

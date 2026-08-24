@@ -1,0 +1,61 @@
+{% extends 'panel/base.html' %}
+{% block title %}Настройки{% endblock %}
+{% block content %}
+<h1>Настройки системы</h1>
+<div class="panel" style="max-width:820px">
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <h2 style="margin-top:0">Рынок</h2>
+    <div class="form-grid">
+      <div class="field"><label>Наименование рынка</label>
+        <input type="text" name="market_name" value="{{ s.market_name }}" style="width:100%"></div>
+      <div class="field"><label>Контакты</label>
+        <input type="text" name="contacts" value="{{ s.contacts }}" style="width:100%"></div>
+    </div>
+
+    <h2>Оплата по QR-коду</h2>
+    <div class="form-grid">
+      <div class="field">
+        <label>QR-код (замена сразу отражается у всех арендаторов — FR-QR-02)</label>
+        {% if s.qr_image %}<img src="{{ s.qr_image.url }}" alt="QR" style="max-width:160px;display:block;margin-bottom:8px">{% endif %}
+        <input type="file" name="qr_image" accept="image/*">
+      </div>
+      <div>
+        <div class="field"><label>Инструкция по оплате (рус.)</label>
+          <textarea name="payment_instruction_ru">{{ s.payment_instruction_ru }}</textarea></div>
+        <div class="field"><label>Инструкция по оплате (кырг.)</label>
+          <textarea name="payment_instruction_ky">{{ s.payment_instruction_ky }}</textarea></div>
+      </div>
+    </div>
+
+    <h2>Начисления и напоминания</h2>
+    <div class="form-grid">
+      <div class="field"><label>Дата начисления по умолчанию (день месяца)</label>
+        <input type="number" name="default_billing_day" min="1" max="31" value="{{ s.default_billing_day }}"></div>
+      <div class="field"><label>Срок оплаты по умолчанию (день месяца, строго позже даты начисления)</label>
+        <input type="number" name="default_payment_day" min="1" max="31" value="{{ s.default_payment_day }}"></div>
+      <div class="field"><label>Дни напоминаний до срока (через запятую)</label>
+        <input type="text" name="reminder_days" value="{{ reminder_days_str }}"></div>
+      <div class="field"><label>Дни уведомления о просрочке (после срока)</label>
+        <input type="text" name="overdue_notice_days" value="{{ overdue_days_str }}"></div>
+    </div>
+
+    <h2>Заявки и вход</h2>
+    <div class="form-grid">
+      <div class="field"><label>Причины отклонения заявок (по одной в строке)</label>
+        <textarea name="reject_reasons">{{ reject_reasons_str }}</textarea></div>
+      <div>
+        <div class="field"><label>
+          <input type="checkbox" name="pin_login_enabled" {% if s.pin_login_enabled %}checked{% endif %}>
+          Требовать PIN-код при входе арендатора (ТЗ-00 п. 8.1)</label></div>
+        <div class="field"><label>Версия текста согласия на обработку ПДн</label>
+          <input type="text" name="consent_version" value="{{ s.consent_version }}"></div>
+        <div class="field"><label>Минимальная версия мобильного приложения</label>
+          <input type="text" name="min_app_version" value="{{ s.min_app_version }}"></div>
+      </div>
+    </div>
+
+    <button class="btn primary">Сохранить настройки</button>
+  </form>
+</div>
+{% endblock %}

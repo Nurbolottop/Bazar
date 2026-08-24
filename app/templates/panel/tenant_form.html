@@ -1,0 +1,36 @@
+{% extends 'panel/base.html' %}
+{% block title %}{% if is_new %}Новый арендатор{% else %}{{ tenant.full_name }}{% endif %}{% endblock %}
+{% block content %}
+<h1>{% if is_new %}Новый арендатор{% else %}Редактирование: {{ tenant.full_name }}{% endif %}</h1>
+<div class="panel" style="max-width:760px">
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="form-grid">
+      <div class="field"><label>ФИО *</label>
+        <input type="text" name="full_name" value="{{ tenant.full_name|default:'' }}" required style="width:100%"></div>
+      <div class="field"><label>ИНН * (для входа в приложение)</label>
+        <input type="text" name="inn" value="{{ tenant.inn|default:'' }}" required style="width:100%"></div>
+      <div class="field"><label>Номер паспорта</label>
+        <input type="text" name="passport_number" value="{{ tenant.passport_number|default:'' }}" style="width:100%"></div>
+      <div class="field"><label>Телефон</label>
+        <input type="text" name="phone" value="{{ tenant.phone|default:'' }}" style="width:100%"></div>
+      <div class="field"><label>Адрес</label>
+        <input type="text" name="address" value="{{ tenant.address|default:'' }}" style="width:100%"></div>
+      <div class="field"><label>Язык уведомлений</label>
+        <select name="language">
+          <option value="ru" {% if tenant.language == 'ru' %}selected{% endif %}>Русский</option>
+          <option value="ky" {% if tenant.language == 'ky' %}selected{% endif %}>Кыргызский</option>
+        </select></div>
+      <div class="field"><label>Дата начисления (пусто — общая настройка)</label>
+        <input type="number" name="billing_day" min="1" max="31" value="{{ tenant.billing_day|default_if_none:'' }}"></div>
+      <div class="field"><label>Срок оплаты (пусто — общая настройка)</label>
+        <input type="number" name="payment_day" min="1" max="31" value="{{ tenant.payment_day|default_if_none:'' }}"></div>
+      <div class="field"><label>Фотография</label><input type="file" name="photo" accept="image/*"></div>
+    </div>
+    <div class="field"><label>Примечание</label>
+      <textarea name="note">{{ tenant.note|default:'' }}</textarea></div>
+    <button class="btn primary">Сохранить</button>
+    <span class="muted">Учётная запись для входа по ИНН создаётся автоматически</span>
+  </form>
+</div>
+{% endblock %}

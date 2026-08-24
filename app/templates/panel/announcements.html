@@ -1,0 +1,47 @@
+{% extends 'panel/base.html' %}
+{% block title %}Объявления{% endblock %}
+{% block content %}
+<h1>Объявления</h1>
+
+<div class="panel" style="max-width:760px">
+  <form method="post" onsubmit="return confirm('Отправить объявление?')">
+    {% csrf_token %}
+    <div class="form-grid">
+      <div class="field"><label>Заголовок (рус.) *</label>
+        <input type="text" name="title_ru" required style="width:100%"></div>
+      <div class="field"><label>Заголовок (кырг.)</label>
+        <input type="text" name="title_ky" style="width:100%"></div>
+    </div>
+    <div class="form-grid">
+      <div class="field"><label>Текст (рус.) *</label><textarea name="body_ru" required></textarea></div>
+      <div class="field"><label>Текст (кырг.)</label><textarea name="body_ky"></textarea></div>
+    </div>
+    <div class="field">
+      <label>Получатели (FR-NT-06)</label>
+      <select name="audience" onchange="document.getElementById('bsel').style.display = this.value === 'building' ? '' : 'none'">
+        {% for value, label in audiences %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+      </select>
+      <select name="building_id" id="bsel" style="display:none">
+        {% for b in buildings %}<option value="{{ b.pk }}">{{ b.name }}</option>{% endfor %}
+      </select>
+    </div>
+    <button class="btn primary">Отправить</button>
+  </form>
+</div>
+
+<h2>Отправленные</h2>
+<div class="panel">
+  <table>
+    <tr><th>Дата</th><th>Заголовок</th><th>Получатели</th><th>Автор</th></tr>
+    {% for a in page %}
+    <tr>
+      <td>{{ a.sent_at|date:'d.m.Y H:i'|default:'—' }}</td>
+      <td>{{ a.title_ru }}</td>
+      <td>{{ a.get_audience_display }}{% if a.building %} · {{ a.building.name }}{% endif %}</td>
+      <td class="muted">{{ a.created_by.username|default:'—' }}</td>
+    </tr>
+    {% empty %}<tr><td colspan="4" class="muted">Объявлений не было</td></tr>{% endfor %}
+  </table>
+  {% include 'panel/_pagination.html' %}
+</div>
+{% endblock %}

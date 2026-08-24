@@ -1,0 +1,49 @@
+{% extends 'panel/base.html' %}
+{% block title %}Арендаторы{% endblock %}
+{% block content %}
+<h1>Арендаторы</h1>
+
+<div class="filters">
+  <form method="get" class="filters">
+    <input type="text" name="q" value="{{ q }}" placeholder="ФИО, ИНН, телефон, номер места">
+    <select name="status">
+      <option value="">Любой статус</option>
+      {% for value, label in statuses %}
+      <option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <select name="building">
+      <option value="">Все корпуса</option>
+      {% for b in buildings %}
+      <option value="{{ b.pk }}" {% if building == b.pk|stringformat:'s' %}selected{% endif %}>{{ b.name }}</option>
+      {% endfor %}
+    </select>
+    <select name="debt">
+      <option value="">Долг — не важно</option>
+      <option value="yes" {% if debt == 'yes' %}selected{% endif %}>С долгом</option>
+      <option value="no" {% if debt == 'no' %}selected{% endif %}>Без долга</option>
+    </select>
+    <button class="btn">Найти</button>
+  </form>
+  <a class="btn primary" href="{% url 'panel:tenant_new' %}">+ Добавить арендатора</a>
+  <a class="btn" href="{% url 'panel:import' %}">Импорт из Excel</a>
+</div>
+
+<div class="panel">
+  <table>
+    <tr><th>ФИО</th><th>ИНН</th><th>Телефон</th><th class="num">Долг</th>
+        <th class="num">Аванс</th><th>Статус</th></tr>
+    {% for tenant in page %}
+    <tr>
+      <td><a href="{% url 'panel:tenant_detail' tenant.pk %}">{{ tenant.full_name }}</a></td>
+      <td class="mono">{{ tenant.inn }}</td>
+      <td>{{ tenant.phone|default:'—' }}</td>
+      <td class="num mono">{% if tenant.balance %}{{ tenant.balance.debt_amount|money }}{% else %}0.00{% endif %}</td>
+      <td class="num mono">{% if tenant.balance %}{{ tenant.balance.advance_amount|money }}{% else %}0.00{% endif %}</td>
+      <td><span class="status {{ tenant.status }}">{{ tenant.get_status_display }}</span></td>
+    </tr>
+    {% empty %}<tr><td colspan="6" class="muted">Никого не найдено</td></tr>{% endfor %}
+  </table>
+  {% include 'panel/_pagination.html' %}
+</div>
+{% endblock %}

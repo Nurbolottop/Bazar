@@ -1,0 +1,27 @@
+{% extends 'panel/base.html' %}
+{% block title %}Шаблоны уведомлений{% endblock %}
+{% block content %}
+<h1>Шаблоны уведомлений</h1>
+<p class="muted">Подстановки: <code>{name}</code> — имя, <code>{amount}</code> — сумма,
+<code>{date}</code> — дата, <code>{rest}</code> — остаток, <code>{reason}</code> — причина.
+Пока шаблон не изменён, используется встроенный текст (FR-NT-07).</p>
+
+{% for row in rows %}
+<div class="panel">
+  <form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="code" value="{{ row.code }}">
+    <input type="hidden" name="lang" value="{{ row.lang }}">
+    <b>{{ row.label }}</b> · {{ row.lang|upper }}
+    {% if row.is_default %}<span class="muted">(встроенный)</span>{% endif %}
+    <div class="form-grid" style="margin-top:10px">
+      <div class="field"><label>Заголовок</label>
+        <input type="text" name="title_template" value="{{ row.title }}" style="width:100%"></div>
+      <div class="field"><label>Текст</label>
+        <textarea name="body_template" style="min-height:56px">{{ row.body }}</textarea></div>
+    </div>
+    <button class="btn small">Сохранить</button>
+  </form>
+</div>
+{% endfor %}
+{% endblock %}

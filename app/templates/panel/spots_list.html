@@ -1,0 +1,98 @@
+{% extends 'panel/base.html' %}
+{% block title %}Места{% endblock %}
+{% block content %}
+<h1>Торговые места</h1>
+
+<div class="filters">
+  <form method="get" class="filters">
+    <input type="text" name="q" value="{{ q }}" placeholder="Код места">
+    <select name="building">
+      <option value="">Все корпуса</option>
+      {% for b in buildings %}
+      <option value="{{ b.pk }}" {% if building == b.pk|stringformat:'s' %}selected{% endif %}>{{ b.name }}</option>
+      {% endfor %}
+    </select>
+    <select name="status">
+      <option value="">Любое состояние</option>
+      {% for value, label in statuses %}
+      <option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn">Показать</button>
+  </form>
+</div>
+
+<div class="panel">
+  <table>
+    <tr><th>Код</th><th>Корпус</th><th>Тип</th><th class="num">Площадь</th>
+        <th>Состояние</th><th>Арендатор</th><th></th></tr>
+    {% for spot in page %}
+    <tr>
+      <td>{{ spot.code }}</td>
+      <td>{{ spot.building.name }}</td>
+      <td>{{ spot.get_spot_type_display }}</td>
+      <td class="num">{{ spot.area_sqm|default:'—' }}</td>
+      <td><span class="status {{ spot.status }}">{{ spot.get_status_display }}</span></td>
+      <td>
+        {% for ts in spot.tenant_spots.all %}{% if ts.is_active %}
+          <a href="{% url 'panel:tenant_detail' ts.tenant_id %}">{{ ts.tenant.full_name }}</a>
+        {% endif %}{% endfor %}
+      </td>
+      <td><a class="btn small" href="{% url 'panel:spot_history' spot.pk %}">История</a></td>
+    </tr>
+    {% empty %}<tr><td colspan="7" class="muted">Мест нет</td></tr>{% endfor %}
+  </table>
+  {% include 'panel/_pagination.html' %}
+</div>
+
+<div class="panel" style="display:flex;gap:40px;flex-wrap:wrap">
+  <div>
+    <h2 style="margin-top:0">Новый корпус</h2>
+    <form method="post" action="{% url 'panel:building_create' %}">
+      {% csrf_token %}
+      <div class="field"><label>Название</label><input type="text" name="name" required></div>
+      <div class="field"><label>Код</label><input type="text" name="code" required></div>
+      <button class="btn">Создать корпус</button>
+    </form>
+  </div>
+  <div>
+    <h2 style="margin-top:0">Новое место</h2>
+    <form method="post" action="{% url 'panel:spot_create' %}">
+      {% csrf_token %}
+      <div class="field"><label>Корпус</label>
+        <select name="building_id" required>
+          {% for b in buildings %}<option value="{{ b.pk }}">{{ b.name }}</option>{% endfor %}
+        </select></div>
+      <div class="field"><label>Код места</label><input type="text" name="code" required></div>
+      <div class="field"><label>Тип</label>
+        <select name="spot_type">
+          {% for value, label in types %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+        </select></div>
+      <div class="field"><label>Площадь, м²</label><input type="text" name="area_sqm"></div>
+      <button class="btn">Создать место</button>
+    </form>
+  </div>
+  <div>
+    <h2 style="margin-top:0">Массовое создание (FR-SP-03)</h2>
+    <form method="post" action="{% url 'panel:spots_mass_create' %}"
+          onsubmit="return confirm('Создать места по шаблону?')">
+      {% csrf_token %}
+      <div class="field"><label>Корпус</label>
+        <select name="building_id" required>
+          {% for b in buildings %}<option value="{{ b.pk }}">{{ b.name }}</option>{% endfor %}
+        </select></div>
+      <div class="field"><label>Префикс кода (например «А-»)</label>
+        <input type="text" name="prefix" placeholder="А-"></div>
+      <div class="field"><label>Начальный номер</label>
+        <input type="number" name="start" value="1" min="1"></div>
+      <div class="field"><label>Количество</label>
+        <input type="number" name="count" value="40" min="1" max="500"></div>
+      <div class="field"><label>Тип</label>
+        <select name="spot_type">
+          {% for value, label in types %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+        </select></div>
+      <button class="btn primary">Создать места</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,117 @@
+/* Веб-панель администрации рынка. Собственный CSS без фреймворка (ТЗ-02 п. 5.1). */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #f4f5f7; --card: #fff; --border: #dde1e6; --text: #1b1f24;
+  --muted: #6a737d; --accent: #0b6e4f; --accent-dark: #095c42;
+  --danger: #b42318; --warn: #b25e09; --ok: #0b6e4f;
+}
+body { font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  background: var(--bg); color: var(--text); font-size: 15px; min-height: 100vh; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+.layout { display: flex; min-height: 100vh; }
+.sidebar { width: 230px; background: #10281f; color: #cfe2da; flex-shrink: 0;
+  display: flex; flex-direction: column; }
+.sidebar .brand { padding: 18px 16px; font-size: 17px; font-weight: 700; color: #fff;
+  border-bottom: 1px solid rgba(255,255,255,.12); }
+.sidebar nav { padding: 10px 0; }
+.sidebar nav a { display: flex; justify-content: space-between; align-items: center;
+  padding: 9px 16px; color: #cfe2da; font-size: 14px; }
+.sidebar nav a:hover { background: rgba(255,255,255,.08); text-decoration: none; }
+.sidebar nav a.active { background: var(--accent); color: #fff; }
+.sidebar .section { padding: 12px 16px 4px; font-size: 11px; text-transform: uppercase;
+  letter-spacing: .08em; color: #7fa295; }
+
+.main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.topbar { background: var(--card); border-bottom: 1px solid var(--border);
+  padding: 10px 24px; display: flex; justify-content: space-between; align-items: center; }
+.topbar .user { color: var(--muted); font-size: 14px; }
+.content { padding: 24px; max-width: 1280px; width: 100%; }
+
+.badge { display: inline-block; min-width: 22px; text-align: center; padding: 2px 7px;
+  border-radius: 999px; background: var(--danger); color: #fff; font-size: 12px;
+  font-weight: 700; }
+.badge.zero { background: #3c4a44; }
+
+h1 { font-size: 22px; margin-bottom: 18px; }
+h2 { font-size: 17px; margin: 22px 0 10px; }
+
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 14px; margin-bottom: 22px; }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+  padding: 16px 18px; }
+.card .label { color: var(--muted); font-size: 13px; margin-bottom: 6px; }
+.card .value { font-size: 26px; font-weight: 700; }
+.card .value.danger { color: var(--danger); }
+
+.panel { background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+  padding: 18px; margin-bottom: 20px; overflow-x: auto; }
+
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th { text-align: left; color: var(--muted); font-weight: 600; font-size: 12px;
+  text-transform: uppercase; letter-spacing: .04em; padding: 8px 10px;
+  border-bottom: 2px solid var(--border); white-space: nowrap; }
+td { padding: 9px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+tr:hover td { background: #fafbfc; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+.status { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 12px;
+  font-weight: 600; white-space: nowrap; }
+.status.unpaid, .status.pending { background: #fff3e0; color: var(--warn); }
+.status.partial { background: #e3f2fd; color: #0d47a1; }
+.status.paid, .status.confirmed, .status.active, .status.free { background: #e6f4ee; color: var(--ok); }
+.status.overdue, .status.rejected, .status.archived { background: #fdecea; color: var(--danger); }
+.status.cancelled, .status.withdrawn, .status.reversed, .status.suspended,
+.status.repair { background: #eceff1; color: var(--muted); }
+.status.occupied { background: #e3f2fd; color: #0d47a1; }
+
+.btn { display: inline-block; padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--card); color: var(--text); font-size: 14px; cursor: pointer; }
+.btn:hover { background: #f0f1f3; text-decoration: none; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.primary:hover { background: var(--accent-dark); }
+.btn.danger { color: var(--danger); border-color: #f1c4c0; }
+.btn.danger:hover { background: #fdecea; }
+.btn.small { padding: 4px 10px; font-size: 13px; }
+
+form.inline { display: inline; }
+.filters { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; align-items: center; }
+input[type=text], input[type=number], input[type=date], input[type=password],
+input[type=file], select, textarea {
+  padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px;
+  background: #fff; font-family: inherit; }
+textarea { width: 100%; min-height: 80px; }
+input:focus, select:focus, textarea:focus { outline: 2px solid #9ec9ba; border-color: var(--accent); }
+label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 4px; }
+.field { margin-bottom: 14px; }
+.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+
+.messages { margin-bottom: 16px; }
+.messages .msg { padding: 10px 14px; border-radius: 8px; margin-bottom: 8px; font-size: 14px; }
+.msg.success { background: #e6f4ee; color: var(--ok); }
+.msg.error { background: #fdecea; color: var(--danger); }
+.msg.warning { background: #fff3e0; color: var(--warn); }
+
+.pagination { display: flex; gap: 6px; margin-top: 14px; align-items: center; font-size: 14px; }
+.pagination a, .pagination span.current { padding: 5px 11px; border: 1px solid var(--border);
+  border-radius: 6px; background: #fff; }
+.pagination span.current { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+.receipt-thumb { width: 46px; height: 46px; object-fit: cover; border-radius: 6px;
+  border: 1px solid var(--border); cursor: zoom-in; }
+.receipt-full { max-width: 100%; max-height: 75vh; border-radius: 10px;
+  border: 1px solid var(--border); }
+.modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.75);
+  z-index: 50; align-items: center; justify-content: center; padding: 30px; }
+.modal.open { display: flex; }
+.modal img { max-width: 95%; max-height: 90vh; }
+
+.login-page { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+.login-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+  padding: 34px; width: 360px; }
+.login-box h1 { text-align: center; }
+.login-box .btn { width: 100%; margin-top: 8px; }
+.muted { color: var(--muted); font-size: 13px; }
+.amount-input { width: 110px; text-align: right; }
+.mono { font-variant-numeric: tabular-nums; }

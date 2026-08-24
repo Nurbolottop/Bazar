@@ -1,0 +1,68 @@
+{% load static %}<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}Панель администрации{% endblock %} · Bazar</title>
+<link rel="stylesheet" href="{% static 'css/panel.css' %}">
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand">Bazar · Рынок</div>
+    <nav>
+      <a href="{% url 'panel:dashboard' %}" {% if request.resolver_match.url_name == 'dashboard' %}class="active"{% endif %}>Главная</a>
+      <a href="{% url 'panel:claims' %}" {% if 'claim' in request.resolver_match.url_name %}class="active"{% endif %}>
+        Заявки об оплате
+        <span class="badge {% if not pending_claims_count %}zero{% endif %}" id="claims-badge">{{ pending_claims_count|default:0 }}</span>
+      </a>
+      <a href="{% url 'panel:tenants' %}" {% if 'tenant' in request.resolver_match.url_name %}class="active"{% endif %}>Арендаторы</a>
+      <a href="{% url 'panel:mass_amounts' %}" {% if request.resolver_match.url_name == 'mass_amounts' %}class="active"{% endif %}>Суммы аренды</a>
+      <a href="{% url 'panel:charges' %}" {% if 'charge' in request.resolver_match.url_name or 'billing' in request.resolver_match.url_name %}class="active"{% endif %}>Начисления</a>
+      <a href="{% url 'panel:payments' %}" {% if request.resolver_match.url_name == 'payments' %}class="active"{% endif %}>Платежи</a>
+      <a href="{% url 'panel:debtors' %}" {% if request.resolver_match.url_name == 'debtors' %}class="active"{% endif %}>Должники</a>
+      <a href="{% url 'panel:spots' %}" {% if 'spot' in request.resolver_match.url_name %}class="active"{% endif %}>Места</a>
+      <div class="section">Сервис</div>
+      <a href="{% url 'panel:announcements' %}" {% if request.resolver_match.url_name == 'announcements' %}class="active"{% endif %}>Объявления</a>
+      <a href="{% url 'panel:reports' %}" {% if request.resolver_match.url_name == 'reports' %}class="active"{% endif %}>Отчёты</a>
+      <a href="{% url 'panel:import' %}" {% if 'import' in request.resolver_match.url_name %}class="active"{% endif %}>Импорт данных</a>
+      <div class="section">Система</div>
+      <a href="{% url 'panel:settings' %}" {% if request.resolver_match.url_name == 'settings' %}class="active"{% endif %}>Настройки</a>
+      <a href="{% url 'panel:templates' %}" {% if request.resolver_match.url_name == 'templates' %}class="active"{% endif %}>Шаблоны уведомлений</a>
+      <a href="{% url 'panel:admins' %}" {% if request.resolver_match.url_name == 'admins' %}class="active"{% endif %}>Администраторы</a>
+      <a href="{% url 'panel:audit' %}" {% if request.resolver_match.url_name == 'audit' %}class="active"{% endif %}>Журнал действий</a>
+    </nav>
+  </aside>
+  <div class="main">
+    <div class="topbar">
+      <div></div>
+      <div class="user">{{ request.user.username }} · <a href="{% url 'panel:logout' %}">Выйти</a></div>
+    </div>
+    <div class="content">
+      {% if messages %}
+      <div class="messages">
+        {% for message in messages %}<div class="msg {{ message.tags }}">{{ message }}</div>{% endfor %}
+      </div>
+      {% endif %}
+      {% block content %}{% endblock %}
+    </div>
+  </div>
+</div>
+<div class="modal" id="img-modal" onclick="this.classList.remove('open')"><img id="img-modal-src" src="" alt=""></div>
+<script>
+/* Счётчик необработанных заявок обновляется не реже раза в минуту (ТЗ-02 п. 5.3) */
+setInterval(function () {
+  fetch('{% url "panel:claims_count" %}').then(r => r.json()).then(d => {
+    const b = document.getElementById('claims-badge');
+    if (b) { b.textContent = d.count; b.classList.toggle('zero', d.count === 0); }
+  }).catch(() => {});
+}, 60000);
+/* Просмотр фотографии чека без перехода на другую страницу */
+function showImage(src) {
+  document.getElementById('img-modal-src').src = src;
+  document.getElementById('img-modal').classList.add('open');
+}
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

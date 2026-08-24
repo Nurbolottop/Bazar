@@ -1,0 +1,43 @@
+{% extends 'panel/base.html' %}
+{% block title %}Просмотр прогона{% endblock %}
+{% block content %}
+<h1>Предварительный просмотр прогона начислений</h1>
+<p class="muted">Расчёт выполнен, в базу ничего не записано (FR-CH-07).
+Дата прогона: {{ run.run_date|date:'d.m.Y' }}.</p>
+
+<div class="cards">
+  <div class="card"><div class="label">Будет создано начислений</div>
+    <div class="value">{{ run.created_count }}</div></div>
+  <div class="card"><div class="label">Общая сумма</div>
+    <div class="value">{{ run.total_amount|money }} сом</div></div>
+  <div class="card"><div class="label">Пропущено</div>
+    <div class="value">{{ run.skipped|length }}</div></div>
+</div>
+
+<div class="panel">
+  <table>
+    <tr><th>Арендатор</th><th>ИНН</th><th>Место</th><th class="num">Сумма</th><th>Срок оплаты</th></tr>
+    {% for row in preview %}
+    <tr>
+      <td>{{ row.tenant }}</td><td class="mono">{{ row.inn }}</td><td>{{ row.spot }}</td>
+      <td class="num mono">{{ row.amount }}</td><td>{{ row.due_date }}</td>
+    </tr>
+    {% empty %}<tr><td colspan="5" class="muted">Сегодня начислять нечего: ни у одного активного
+      арендатора не наступила дата начисления</td></tr>{% endfor %}
+  </table>
+</div>
+
+{% if run.skipped %}
+<h2>Пропущено</h2>
+<div class="panel"><table>
+  {% for s in run.skipped %}<tr><td class="mono">{{ s.tenant }}</td><td>{{ s.spot|default:'' }}</td>
+    <td class="muted">{{ s.reason }}</td></tr>{% endfor %}
+</table></div>
+{% endif %}
+
+<form class="inline" method="post" action="{% url 'panel:billing_run' %}"
+      onsubmit="return confirm('Выполнить прогон и создать начисления?')">
+  {% csrf_token %}<button class="btn primary">Выполнить прогон</button>
+</form>
+<a class="btn" href="{% url 'panel:charges' %}">Назад</a>
+{% endblock %}
