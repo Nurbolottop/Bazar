@@ -3,7 +3,7 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 
-from apps.core.views import health
+from apps.core.views import health, protected_media
 
 urlpatterns = [
     # Встроенная админка — служебный инструмент разработчиков (ТЗ-02 п. 2.3),
@@ -21,3 +21,7 @@ if settings.DEBUG:
         path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='api-docs'),
     ]
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+else:
+    # В prod медиа-файлы отдаются только через проверку прав (ТЗ-02 п. 7.3):
+    # nginx проксирует /media/ в Django, напрямую отдаёт только /static/
+    urlpatterns += [path('media/<path:path>', protected_media)]
