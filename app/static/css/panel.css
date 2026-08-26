@@ -349,3 +349,62 @@ label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 5px
   .btn.small { height: 36px; }
   .receipt-thumb { width: 54px; height: 54px; }
 }
+
+/* ================= Карта рынка ================= */
+.map-legend { display: flex; gap: 16px; align-items: center; font-size: 13px;
+  color: var(--muted); flex-wrap: wrap; }
+.map-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.cell-demo { width: 16px; height: 16px; border-radius: 4px; display: inline-block; }
+.cell-demo.free { background: #fff; border: 1.5px solid #7fbfa6; }
+.cell-demo.occupied { background: var(--accent); }
+.cell-demo.repair { background: #cfd6d2; }
+
+.market-map { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 24px; }
+.map-building { background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden;
+  flex: 1 1 340px; max-width: 100%; }
+.map-building-head { display: flex; justify-content: space-between; align-items: center;
+  gap: 10px; padding: 11px 16px; background: #143528; color: #fff; font-size: 14px; }
+.map-building-head span { color: #9dc3b2; font-size: 12.5px; white-space: nowrap; }
+/* Каждому корпусу — свой цвет шапки, как секторам на схеме рынка */
+.map-building:nth-child(6n+2) .map-building-head { background: #1d4fa1; }
+.map-building:nth-child(6n+2) .map-building-head span { color: #aecbf5; }
+.map-building:nth-child(6n+3) .map-building-head { background: #8a520b; }
+.map-building:nth-child(6n+3) .map-building-head span { color: #ecd0a8; }
+.map-building:nth-child(6n+4) .map-building-head { background: #5b3d8f; }
+.map-building:nth-child(6n+4) .map-building-head span { color: #cfc0ea; }
+.map-building:nth-child(6n+5) .map-building-head { background: #7a1f3d; }
+.map-building:nth-child(6n+5) .map-building-head span { color: #ecb6c9; }
+.map-building:nth-child(6n) .map-building-head { background: #3e5b1e; }
+.map-building:nth-child(6n) .map-building-head span { color: #c8dfa8; }
+.map-grid { display: flex; flex-wrap: wrap; gap: 5px; padding: 14px; }
+.map-cell { min-width: 52px; height: 34px; padding: 0 7px; border-radius: 6px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums;
+  border: 1.5px solid transparent; transition: transform .1s ease, box-shadow .1s ease; }
+.map-cell:hover { text-decoration: none; transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(16, 32, 26, .18); }
+.map-cell.free { background: #fff; border-color: #7fbfa6; color: var(--accent); }
+.map-cell.occupied { background: var(--accent); color: #fff; }
+.map-cell.repair { background: #cfd6d2; color: #5c6b64; }
+
+/* Сворачиваемые блоки под картой */
+.collapse { margin-bottom: 16px; }
+.collapse > summary { cursor: pointer; padding: 13px 18px; background: var(--card);
+  border: 1px solid var(--border); border-radius: var(--radius); font-weight: 600;
+  font-size: 14.5px; box-shadow: var(--shadow); list-style: none;
+  display: flex; align-items: center; gap: 10px; user-select: none; }
+.collapse > summary::-webkit-details-marker { display: none; }
+.collapse > summary::before { content: '▸'; color: var(--muted); transition: transform .15s ease; }
+.collapse[open] > summary::before { transform: rotate(90deg); }
+.collapse[open] > summary { border-radius: var(--radius) var(--radius) 0 0; margin-bottom: 0; }
+.collapse > summary:hover { background: #f7faf8; }
+.collapse > .toolbar, .collapse > .panel { border-top: none;
+  border-radius: 0 0 var(--radius) var(--radius); margin-bottom: 0; }
+.collapse > .toolbar { border-radius: 0; }
+
+@media (max-width: 700px) {
+  .map-building { flex-basis: 100%; }
+  .map-cell { min-width: 46px; height: 38px; font-size: 12.5px; }
+  .map-grid { gap: 6px; padding: 12px; }
+}
