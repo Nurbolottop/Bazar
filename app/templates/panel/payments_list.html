@@ -18,21 +18,21 @@
 </div>
 
 <div class="panel">
-  <table>
+  <table class="t-cards">
     <tr><th>Дата</th><th>Арендатор</th><th class="num">Сумма</th><th>Источник</th>
         <th>Кто подтвердил</th><th>Чек</th><th>Статус</th><th></th></tr>
     {% for p in page %}
     <tr>
-      <td>{{ p.paid_at|date:'d.m.Y H:i' }}</td>
-      <td><a href="{% url 'panel:tenant_detail' p.tenant_id %}">{{ p.tenant.full_name }}</a></td>
-      <td class="num mono">{{ p.amount|money }}</td>
-      <td>{{ p.get_source_display }}</td>
-      <td class="muted">{{ p.created_by.username|default:'—' }}</td>
-      <td>{% if p.claim and p.claim.receipt_image %}
+      <td data-label="Дата">{{ p.paid_at|date:'d.m.Y H:i' }}</td>
+      <td class="t-title"><a href="{% url 'panel:tenant_detail' p.tenant_id %}">{{ p.tenant.full_name }}</a></td>
+      <td class="num mono" data-label="Сумма, сом">{{ p.amount|money }}</td>
+      <td data-label="Источник">{{ p.get_source_display }}</td>
+      <td class="muted" data-label="Подтвердил">{{ p.created_by.username|default:'—' }}</td>
+      <td data-label="Чек">{% if p.claim and p.claim.receipt_image %}
         <img class="receipt-thumb" src="{{ p.claim.receipt_image.url }}"
              onclick="showImage('{{ p.claim.receipt_image.url }}')" alt="чек">
       {% else %}—{% endif %}</td>
-      <td><span class="status {{ p.status }}">{{ p.get_status_display }}</span>
+      <td data-label="Статус"><span class="status {{ p.status }}">{{ p.get_status_display }}</span>
         {% if p.reversed_reason %}<div class="muted">{{ p.reversed_reason }}</div>{% endif %}</td>
       <td>{% if p.status == 'active' %}
         <form class="inline" method="post" action="{% url 'panel:payment_reverse' p.pk %}"

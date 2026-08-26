@@ -15,19 +15,19 @@
 </div>
 
 <div class="panel">
-  <table>
+  <table class="t-cards">
     <tr><th>№</th><th>Подана</th><th>Арендатор</th><th class="num">Сумма</th>
         <th>Чек</th><th>Статус</th><th>Действия</th></tr>
     {% for claim in page %}
     <tr>
-      <td><a href="{% url 'panel:claim_detail' claim.pk %}">#{{ claim.pk }}</a></td>
-      <td>{{ claim.submitted_at|date:'d.m.Y H:i' }}</td>
-      <td><a href="{% url 'panel:tenant_detail' claim.tenant_id %}">{{ claim.tenant.full_name }}</a></td>
-      <td class="num mono">{{ claim.declared_amount|money }}</td>
-      <td>{% if claim.receipt_image %}
+      <td class="t-title"><a href="{% url 'panel:claim_detail' claim.pk %}">Заявка #{{ claim.pk }}</a></td>
+      <td data-label="Подана">{{ claim.submitted_at|date:'d.m.Y H:i' }}</td>
+      <td data-label="Арендатор"><a href="{% url 'panel:tenant_detail' claim.tenant_id %}">{{ claim.tenant.full_name }}</a></td>
+      <td class="num mono" data-label="Сумма, сом">{{ claim.declared_amount|money }}</td>
+      <td data-label="Чек">{% if claim.receipt_image %}
         <img class="receipt-thumb" src="{{ claim.receipt_image.url }}" onclick="showImage('{{ claim.receipt_image.url }}')" alt="чек">
       {% endif %}</td>
-      <td><span class="status {{ claim.status }}">{{ claim.get_status_display }}</span></td>
+      <td data-label="Статус"><span class="status {{ claim.status }}">{{ claim.get_status_display }}</span></td>
       <td>
         {% if claim.status == 'pending' %}
         <form class="inline" method="post" action="{% url 'panel:claim_confirm' claim.pk %}"

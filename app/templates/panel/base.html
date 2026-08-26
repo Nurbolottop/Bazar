@@ -2,14 +2,19 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f221a">
 <title>{% block title %}Панель администрации{% endblock %} · Bazar</title>
 <link rel="stylesheet" href="{% static 'css/panel.css' %}">
 </head>
 <body>
 <div class="layout">
-  <aside class="sidebar">
-    <div class="brand">Bazar · Рынок</div>
+  <div class="drawer-overlay" id="drawer-overlay"></div>
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      Bazar · Рынок
+      <button type="button" class="drawer-close" id="drawer-close" aria-label="Закрыть меню">✕</button>
+    </div>
     <nav>
       <a href="{% url 'panel:dashboard' %}" {% if request.resolver_match.url_name == 'dashboard' %}class="active"{% endif %}>Главная</a>
       <a href="{% url 'panel:claims' %}" {% if 'claim' in request.resolver_match.url_name %}class="active"{% endif %}>
@@ -30,10 +35,19 @@
       <a href="{% url 'panel:settings' %}" {% if request.resolver_match.url_name == 'settings' %}class="active"{% endif %}>Настройки</a>
       <a href="{% url 'panel:admins' %}" {% if request.resolver_match.url_name == 'admins' %}class="active"{% endif %}>Администраторы</a>
     </nav>
+    <div class="sidebar-footer">
+      <span>{{ request.user.username }}</span>
+      <a href="{% url 'panel:logout' %}">Выйти</a>
+    </div>
   </aside>
+
   <div class="main">
     <div class="topbar">
-      <div></div>
+      <button type="button" class="burger" id="burger" aria-label="Открыть меню">
+        <span></span><span></span><span></span>
+        {% if pending_claims_count %}<i class="burger-dot"></i>{% endif %}
+      </button>
+      <div class="topbar-title">Bazar · Рынок</div>
       <div class="user">{{ request.user.username }} · <a href="{% url 'panel:logout' %}">Выйти</a></div>
     </div>
     <div class="content">
@@ -48,7 +62,7 @@
 </div>
 <div class="modal" id="img-modal" onclick="this.classList.remove('open')"><img id="img-modal-src" src="" alt=""></div>
 <script>
-/* Счётчик необработанных заявок обновляется не реже раза в минуту (ТЗ-02 п. 5.3) */
+/* Счётчик необработанных заявок обновляется не реже раза в минуту */
 setInterval(function () {
   fetch('{% url "panel:claims_count" %}').then(r => r.json()).then(d => {
     const b = document.getElementById('claims-badge');
@@ -60,6 +74,17 @@ function showImage(src) {
   document.getElementById('img-modal-src').src = src;
   document.getElementById('img-modal').classList.add('open');
 }
+/* Мобильное меню-шторка */
+(function () {
+  const body = document.body;
+  const open = () => body.classList.add('drawer-open');
+  const close = () => body.classList.remove('drawer-open');
+  document.getElementById('burger').addEventListener('click', open);
+  document.getElementById('drawer-close').addEventListener('click', close);
+  document.getElementById('drawer-overlay').addEventListener('click', close);
+  document.querySelectorAll('#sidebar nav a').forEach(a => a.addEventListener('click', close));
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+})();
 </script>
 {% block scripts %}{% endblock %}
 </body>

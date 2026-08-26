@@ -28,14 +28,14 @@
 
 <h2>Последние действия</h2>
 <div class="panel">
-  <table>
+  <table class="t-cards">
     <tr><th>Время</th><th>Администратор</th><th>Действие</th><th>Объект</th></tr>
     {% for a in recent_actions %}
     <tr>
-      <td>{{ a.created_at|date:'d.m.Y H:i' }}</td>
-      <td>{{ a.actor.username|default:a.actor_type }}</td>
-      <td>{{ a.action }}</td>
-      <td class="muted">{{ a.model_name }} #{{ a.object_id }}</td>
+      <td data-label="Время">{{ a.created_at|date:'d.m.Y H:i' }}</td>
+      <td data-label="Администратор">{{ a.actor.username|default:a.actor_type }}</td>
+      <td data-label="Действие">{{ a.action }}</td>
+      <td class="muted" data-label="Объект">{{ a.model_name }} #{{ a.object_id }}</td>
     </tr>
     {% empty %}<tr><td colspan="4" class="muted">Пока пусто</td></tr>{% endfor %}
   </table>

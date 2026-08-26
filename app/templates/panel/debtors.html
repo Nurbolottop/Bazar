@@ -18,18 +18,18 @@
 </div>
 
 <div class="panel">
-  <table>
+  <table class="t-cards">
     <tr><th>Арендатор</th><th>Телефон</th><th>Места</th><th class="num">Долг, сом</th>
         <th class="num">Дней просрочки</th><th>Последний платёж</th></tr>
     {% for r in rows %}
     <tr>
-      <td><a href="{% url 'panel:tenant_detail' r.tenant.pk %}">{{ r.tenant.full_name }}</a>
-        <div class="muted">ИНН {{ r.tenant.inn }}</div></td>
-      <td>{{ r.phone|default:'—' }}</td>
-      <td>{{ r.spots|default:'—' }}</td>
-      <td class="num mono" style="color:var(--danger);font-weight:700">{{ r.debt|money }}</td>
-      <td class="num">{% if r.days_overdue %}{{ r.days_overdue }}{% else %}—{% endif %}</td>
-      <td>{{ r.last_payment|date:'d.m.Y'|default:'не платил' }}</td>
+      <td class="t-title"><a href="{% url 'panel:tenant_detail' r.tenant.pk %}">{{ r.tenant.full_name }}</a>
+        <span class="muted">· ИНН {{ r.tenant.inn }}</span></td>
+      <td data-label="Телефон">{{ r.phone|default:'—' }}</td>
+      <td data-label="Места">{{ r.spots|default:'—' }}</td>
+      <td class="num mono" data-label="Долг, сом" style="color:var(--danger);font-weight:700">{{ r.debt|money }}</td>
+      <td class="num" data-label="Дней просрочки">{% if r.days_overdue %}{{ r.days_overdue }}{% else %}—{% endif %}</td>
+      <td data-label="Последний платёж">{{ r.last_payment|date:'d.m.Y'|default:'не платил' }}</td>
     </tr>
     {% empty %}<tr><td colspan="6" class="muted">Должников нет 🎉</td></tr>{% endfor %}
   </table>

@@ -23,17 +23,17 @@
 </div>
 
 <div class="panel">
-  <table>
+  <table class="t-cards">
     <tr><th>Код</th><th>Корпус</th><th>Тип</th><th class="num">Площадь</th>
         <th>Состояние</th><th>Арендатор</th><th></th></tr>
     {% for spot in page %}
     <tr>
-      <td>{{ spot.code }}</td>
-      <td>{{ spot.building.name }}</td>
-      <td>{{ spot.get_spot_type_display }}</td>
-      <td class="num">{{ spot.area_sqm|default:'—' }}</td>
-      <td><span class="status {{ spot.status }}">{{ spot.get_status_display }}</span></td>
-      <td>
+      <td class="t-title">{{ spot.code }}</td>
+      <td data-label="Корпус">{{ spot.building.name }}</td>
+      <td data-label="Тип">{{ spot.get_spot_type_display }}</td>
+      <td class="num" data-label="Площадь, м²">{{ spot.area_sqm|default:'—' }}</td>
+      <td data-label="Состояние"><span class="status {{ spot.status }}">{{ spot.get_status_display }}</span></td>
+      <td data-label="Арендатор">
         {% for ts in spot.tenant_spots.all %}{% if ts.is_active %}
           <a href="{% url 'panel:tenant_detail' ts.tenant_id %}">{{ ts.tenant.full_name }}</a>
         {% endif %}{% endfor %}
