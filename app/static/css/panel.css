@@ -355,7 +355,7 @@ label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 5px
   color: var(--muted); flex-wrap: wrap; }
 .map-legend span { display: inline-flex; align-items: center; gap: 6px; }
 .cell-demo { width: 16px; height: 16px; border-radius: 4px; display: inline-block; }
-.cell-demo.free { background: #fff; border: 1.5px solid #7fbfa6; }
+.cell-demo.free { background: #fff; border: 1px solid #8cc3ab; }
 .cell-demo.occupied { background: var(--accent); }
 .cell-demo.repair { background: #cfd6d2; }
 
@@ -377,16 +377,16 @@ label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 5px
 .map-building:nth-child(6n+5) .map-building-head span { color: #ecb6c9; }
 .map-building:nth-child(6n) .map-building-head { background: #3e5b1e; }
 .map-building:nth-child(6n) .map-building-head span { color: #c8dfa8; }
-.map-grid { display: flex; flex-wrap: wrap; gap: 5px; padding: 14px; }
-.map-cell { min-width: 52px; height: 34px; padding: 0 7px; border-radius: 6px;
-  display: inline-flex; align-items: center; justify-content: center;
-  font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums;
-  border: 1.5px solid transparent; transition: transform .1s ease, box-shadow .1s ease; }
-.map-cell:hover { text-decoration: none; transform: translateY(-1px);
-  box-shadow: 0 3px 8px rgba(16, 32, 26, .18); }
-.map-cell.free { background: #fff; border-color: #7fbfa6; color: var(--accent); }
-.map-cell.occupied { background: var(--accent); color: #fff; }
-.map-cell.repair { background: #cfd6d2; color: #5c6b64; }
+.map-grid { display: flex; flex-wrap: wrap; gap: 3px; padding: 14px; }
+.map-cell { width: 22px; height: 22px; border-radius: 3px; display: inline-block;
+  border: 1px solid rgba(16, 32, 26, .18);
+  transition: transform .08s ease, box-shadow .08s ease; }
+.map-cell:hover { text-decoration: none; transform: scale(1.35);
+  box-shadow: 0 3px 8px rgba(16, 32, 26, .3); position: relative; z-index: 2; }
+.map-cell.free { background: #fff; border-color: #8cc3ab; }
+.map-cell.occupied { background: var(--accent); border-color: var(--accent-dark); }
+.map-cell.repair { background: #cfd6d2; border-color: #b4bdb8;
+  background-image: repeating-linear-gradient(45deg, transparent 0 3px, rgba(0,0,0,.08) 3px 6px); }
 
 /* Сворачиваемые блоки под картой */
 .collapse { margin-bottom: 16px; }
@@ -405,6 +405,6 @@ label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 5px
 
 @media (max-width: 700px) {
   .map-building { flex-basis: 100%; }
-  .map-cell { min-width: 46px; height: 38px; font-size: 12.5px; }
-  .map-grid { gap: 6px; padding: 12px; }
+  .map-cell { width: 26px; height: 26px; }
+  .map-grid { gap: 4px; padding: 12px; }
 }

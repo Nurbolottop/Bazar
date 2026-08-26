@@ -22,14 +22,14 @@
       {% for row in mb.spots %}
         {% if row.link %}
           <a class="map-cell occupied" href="{% url 'panel:tenant_detail' row.link.tenant_id %}"
-             title="{{ row.spot.code }} · {{ row.link.tenant.full_name }} · {{ row.link.monthly_amount|money }} сом/мес">
-            {{ row.spot.code }}</a>
+             aria-label="{{ row.spot.code }}"
+             title="{{ row.spot.code }} · {{ row.link.tenant.full_name }} · {{ row.link.monthly_amount|money }} сом/мес"></a>
         {% elif row.spot.status == 'repair' %}
           <a class="map-cell repair" href="{% url 'panel:spot_history' row.spot.pk %}"
-             title="{{ row.spot.code }} · на ремонте">{{ row.spot.code }}</a>
+             aria-label="{{ row.spot.code }}" title="{{ row.spot.code }} · на ремонте"></a>
         {% else %}
           <a class="map-cell free" href="{% url 'panel:spot_history' row.spot.pk %}"
-             title="{{ row.spot.code }} · свободно">{{ row.spot.code }}</a>
+             aria-label="{{ row.spot.code }}" title="{{ row.spot.code }} · свободно"></a>
         {% endif %}
       {% empty %}<span class="muted" style="padding:6px">В корпусе пока нет мест</span>{% endfor %}
     </div>
