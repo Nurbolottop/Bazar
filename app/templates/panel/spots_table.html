@@ -1,0 +1,52 @@
+{% extends 'panel/base.html' %}
+{% block title %}Список мест{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Список мест</h1>
+  <div class="actions">
+    <a class="btn" href="{% url 'panel:spots' %}">← Карта рынка</a>
+    <a class="btn primary" href="{% url 'panel:spots_manage' %}">+ Добавить</a>
+  </div>
+</div>
+
+<form method="get" class="toolbar">
+  <input type="text" name="q" value="{{ q }}" placeholder="Код места">
+  <select name="building">
+    <option value="">Все корпуса</option>
+    {% for b in buildings %}
+    <option value="{{ b.pk }}" {% if building == b.pk|stringformat:'s' %}selected{% endif %}>{{ b.name }}</option>
+    {% endfor %}
+  </select>
+  <select name="status">
+    <option value="">Любое состояние</option>
+    {% for value, label in statuses %}
+    <option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>
+    {% endfor %}
+  </select>
+  <button class="btn">Показать</button>
+  {% if q or building or status %}<a class="btn" href="{% url 'panel:spots_table' %}">Сбросить</a>{% endif %}
+</form>
+
+<div class="panel">
+  <table class="t-cards">
+    <tr><th>Код</th><th>Корпус</th><th>Тип</th><th class="num">Площадь</th>
+        <th>Состояние</th><th>Арендатор</th><th></th></tr>
+    {% for spot in page %}
+    <tr>
+      <td class="t-title">{{ spot.code }}</td>
+      <td data-label="Корпус">{{ spot.building.name }}</td>
+      <td data-label="Тип">{{ spot.get_spot_type_display }}</td>
+      <td class="num" data-label="Площадь, м²">{{ spot.area_sqm|default:'—' }}</td>
+      <td data-label="Состояние"><span class="status {{ spot.status }}">{{ spot.get_status_display }}</span></td>
+      <td data-label="Арендатор">
+        {% for ts in spot.tenant_spots.all %}{% if ts.is_active %}
+          <a href="{% url 'panel:tenant_detail' ts.tenant_id %}">{{ ts.tenant.full_name }}</a>
+        {% endif %}{% endfor %}
+      </td>
+      <td><a class="btn small" href="{% url 'panel:spot_history' spot.pk %}">История</a></td>
+    </tr>
+    {% empty %}<tr><td colspan="7" class="muted">Ничего не найдено</td></tr>{% endfor %}
+  </table>
+  {% include 'panel/_pagination.html' %}
+</div>
+{% endblock %}

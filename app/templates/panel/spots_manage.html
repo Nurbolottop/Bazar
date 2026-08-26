@@ -1,0 +1,81 @@
+{% extends 'panel/base.html' %}
+{% block title %}Добавление мест{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Добавить корпус или места</h1>
+  <div class="actions">
+    <a class="btn" href="{% url 'panel:spots' %}">← Карта рынка</a>
+    <a class="btn" href="{% url 'panel:spots_table' %}">Список мест</a>
+  </div>
+</div>
+
+<div class="manage-grid">
+  <section class="mcard">
+    <h2>Новый корпус</h2>
+    <p class="muted">Корпус — это сектор на карте рынка (например «Кербен», «Форт»).</p>
+    <form method="post" action="{% url 'panel:building_create' %}">
+      {% csrf_token %}
+      <div class="field"><label>Название</label>
+        <input type="text" name="name" placeholder="Корпус А" required></div>
+      <div class="field"><label>Код</label>
+        <input type="text" name="code" placeholder="А" required></div>
+      <button class="btn primary">Создать корпус</button>
+    </form>
+  </section>
+
+  <section class="mcard">
+    <h2>Массовое создание мест</h2>
+    <p class="muted">Создаёт сразу ряд мест с автонумерацией: А-01, А-02, … Быстрый способ
+    заполнить корпус.</p>
+    <form method="post" action="{% url 'panel:spots_mass_create' %}"
+          onsubmit="return confirm('Создать места по шаблону?')">
+      {% csrf_token %}
+      <div class="field"><label>Корпус</label>
+        <select name="building_id" required>
+          {% for b in buildings %}<option value="{{ b.pk }}">{{ b.name }}</option>{% endfor %}
+        </select></div>
+      <div class="field"><label>Префикс кода</label>
+        <input type="text" name="prefix" placeholder="А-"></div>
+      <div class="mrow">
+        <div class="field"><label>Начальный номер</label>
+          <input type="number" name="start" value="1" min="1"></div>
+        <div class="field"><label>Количество</label>
+          <input type="number" name="count" value="40" min="1" max="500"></div>
+      </div>
+      <div class="field"><label>Тип мест</label>
+        <select name="spot_type">
+          {% for value, label in types %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+        </select></div>
+      <button class="btn primary">Создать места</button>
+    </form>
+  </section>
+
+  <section class="mcard">
+    <h2>Одно место</h2>
+    <p class="muted">Для отдельного павильона или нестандартного места.</p>
+    <form method="post" action="{% url 'panel:spot_create' %}">
+      {% csrf_token %}
+      <div class="field"><label>Корпус</label>
+        <select name="building_id" required>
+          {% for b in buildings %}<option value="{{ b.pk }}">{{ b.name }}</option>{% endfor %}
+        </select></div>
+      <div class="field"><label>Код места</label>
+        <input type="text" name="code" placeholder="А-15" required></div>
+      <div class="mrow">
+        <div class="field"><label>Тип</label>
+          <select name="spot_type">
+            {% for value, label in types %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+          </select></div>
+        <div class="field"><label>Площадь, м²</label>
+          <input type="text" name="area_sqm" placeholder="12.5"></div>
+      </div>
+      <button class="btn">Создать место</button>
+    </form>
+  </section>
+</div>
+
+{% if not buildings %}
+<div class="msg warning" style="max-width:640px">Сначала создайте корпус — без него
+  места добавить нельзя.</div>
+{% endif %}
+{% endblock %}

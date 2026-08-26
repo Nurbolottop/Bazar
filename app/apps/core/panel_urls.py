@@ -57,7 +57,9 @@ urlpatterns = [
     path('charges/<int:pk>/cancel/', billing.charge_cancel, name='charge_cancel'),
 
     # Места
-    path('spots/', catalog.spots_list, name='spots'),
+    path('spots/', catalog.spots_map, name='spots'),
+    path('spots/list/', catalog.spots_table, name='spots_table'),
+    path('spots/manage/', catalog.spots_manage, name='spots_manage'),
     path('spots/create/', catalog.spot_create, name='spot_create'),
     path('spots/mass-create/', catalog.spots_mass_create, name='spots_mass_create'),
     path('spots/<int:pk>/history/', catalog.spot_history, name='spot_history'),

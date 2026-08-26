@@ -11,24 +11,11 @@ from .models import Building, Spot
 
 
 @admin_required
-def spots_list(request):
-    """Реестр мест с фильтром по корпусу и состоянию."""
-    qs = Spot.objects.select_related('building').prefetch_related('tenant_spots__tenant')
-    building = request.GET.get('building', '')
-    if building.isdigit():
-        qs = qs.filter(building_id=int(building))
-    status = request.GET.get('status', '')
-    if status in dict(Spot.Status.choices):
-        qs = qs.filter(status=status)
-    q = request.GET.get('q', '').strip()
-    if q:
-        qs = qs.filter(Q(code__icontains=q) | Q(note__icontains=q))
-
-    page = paginate(request, qs.order_by('building__code', 'code'))
-
-    # Карта рынка: корпуса с местами и арендаторами, всё одним запросом
+def spots_map(request):
+    """Карта рынка: корпуса-сектора с квадратами мест. Главная страница раздела."""
     from django.db.models import Prefetch
     from apps.tenants.models import TenantSpot
+
     map_buildings = []
     buildings_qs = Building.objects.filter(is_active=True).prefetch_related(
         Prefetch('spots', queryset=Spot.objects.order_by('code').prefetch_related(
@@ -48,13 +35,37 @@ def spots_list(request):
             'building': b, 'spots': spots,
             'total': len(spots), 'occupied': occupied,
         })
+    return render(request, 'panel/spots_map.html', {'map_buildings': map_buildings})
 
-    return render(request, 'panel/spots_list.html', {
+
+@admin_required
+def spots_table(request):
+    """Список мест с поиском и фильтрами по корпусу и состоянию."""
+    qs = Spot.objects.select_related('building').prefetch_related('tenant_spots__tenant')
+    building = request.GET.get('building', '')
+    if building.isdigit():
+        qs = qs.filter(building_id=int(building))
+    status = request.GET.get('status', '')
+    if status in dict(Spot.Status.choices):
+        qs = qs.filter(status=status)
+    q = request.GET.get('q', '').strip()
+    if q:
+        qs = qs.filter(Q(code__icontains=q) | Q(note__icontains=q))
+
+    page = paginate(request, qs.order_by('building__code', 'code'))
+    return render(request, 'panel/spots_table.html', {
         'page': page, 'building': building, 'status': status, 'q': q,
         'buildings': Building.objects.all(),
         'statuses': Spot.Status.choices,
+    })
+
+
+@admin_required
+def spots_manage(request):
+    """Добавление корпусов и мест: поштучно и массово."""
+    return render(request, 'panel/spots_manage.html', {
+        'buildings': Building.objects.all(),
         'types': Spot.Type.choices,
-        'map_buildings': map_buildings,
     })
 
 
@@ -73,7 +84,7 @@ def building_create(request):
               actor=request.user, new_value={'name': name, 'code': code},
               ip=client_ip(request))
         messages.success(request, f'Корпус {name} создан.')
-    return redirect('panel:spots')
+    return redirect('panel:spots_manage')
 
 
 @admin_required
@@ -96,7 +107,7 @@ def spot_create(request):
         audit(action='spot_create', model_name='Spot', object_id=spot.pk,
               actor=request.user, new_value={'code': code}, ip=client_ip(request))
         messages.success(request, f'Место {code} создано.')
-    return redirect('panel:spots')
+    return redirect('panel:spots_manage')
 
 
 @admin_required
@@ -110,10 +121,10 @@ def spots_mass_create(request):
         count = int(request.POST.get('count', 0))
     except ValueError:
         messages.error(request, 'Номер и количество должны быть числами.')
-        return redirect('panel:spots')
+        return redirect('panel:spots_manage')
     if count < 1 or count > 500:
         messages.error(request, 'Количество мест — от 1 до 500.')
-        return redirect('panel:spots')
+        return redirect('panel:spots_manage')
 
     spot_type = request.POST.get('spot_type', Spot.Type.CONTAINER)
     created, skipped = 0, []
@@ -133,7 +144,7 @@ def spots_mass_create(request):
     if skipped:
         text += f' Пропущены занятые коды: {", ".join(skipped[:10])}.'
     messages.success(request, text)
-    return redirect('panel:spots')
+    return redirect('panel:spots_manage')
 
 
 @admin_required

@@ -1,0 +1,54 @@
+{% extends 'panel/base.html' %}
+{% block title %}Места{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Карта рынка</h1>
+  <div class="actions">
+    <a class="btn" href="{% url 'panel:spots_table' %}">Список мест и поиск</a>
+    <a class="btn primary" href="{% url 'panel:spots_manage' %}">+ Добавить корпус или места</a>
+  </div>
+</div>
+
+<div class="map-legend" style="margin-bottom:16px">
+  <span><i class="cell-demo free"></i> Свободно</span>
+  <span><i class="cell-demo occupied"></i> Занято</span>
+  <span><i class="cell-demo repair"></i> На ремонте</span>
+  <span class="muted">— наведите на квадрат, чтобы увидеть место и арендатора</span>
+</div>
+
+{% if map_buildings %}
+<div class="market-map">
+  {% for mb in map_buildings %}
+  <div class="map-building">
+    <div class="map-building-head">
+      <b>{{ mb.building.name }}</b>
+      <span>занято {{ mb.occupied }} из {{ mb.total }}</span>
+    </div>
+    <div class="map-grid">
+      {% for row in mb.spots %}
+        {% if row.link %}
+          <a class="map-cell occupied" href="{% url 'panel:tenant_detail' row.link.tenant_id %}"
+             aria-label="{{ row.spot.code }}"
+             title="{{ row.spot.code }} · {{ row.link.tenant.full_name }} · {{ row.link.monthly_amount|money }} сом/мес"></a>
+        {% elif row.spot.status == 'repair' %}
+          <a class="map-cell repair" href="{% url 'panel:spot_history' row.spot.pk %}"
+             aria-label="{{ row.spot.code }}" title="{{ row.spot.code }} · на ремонте"></a>
+        {% else %}
+          <a class="map-cell free" href="{% url 'panel:spot_history' row.spot.pk %}"
+             aria-label="{{ row.spot.code }}" title="{{ row.spot.code }} · свободно"></a>
+        {% endif %}
+      {% empty %}<span class="muted" style="padding:4px 2px">В корпусе пока нет мест —
+        <a href="{% url 'panel:spots_manage' %}">добавить</a></span>{% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="panel empty-state">
+  <p><b>Карта пока пуста.</b></p>
+  <p class="muted">Создайте корпуса и места — карта построится автоматически:
+  каждый корпус станет сектором, каждое место — квадратом.</p>
+  <a class="btn primary" href="{% url 'panel:spots_manage' %}">+ Добавить корпус или места</a>
+</div>
+{% endif %}
+{% endblock %}

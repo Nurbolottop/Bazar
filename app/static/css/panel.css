@@ -408,3 +408,21 @@ label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 5px
   .map-cell { width: 26px; height: 26px; }
   .map-grid { gap: 4px; padding: 12px; }
 }
+
+/* Сектор карты не растягивается на всю ширину — пакуется по содержимому */
+.map-building { flex: 0 1 auto; min-width: 280px; }
+.map-grid { max-width: 560px; }
+.empty-state { padding: 34px; text-align: center; }
+.empty-state p { margin-bottom: 8px; }
+.empty-state .btn { margin-top: 10px; }
+
+/* Страница добавления мест */
+.manage-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+  gap: 16px; max-width: 1000px; }
+.mcard { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 22px 24px; box-shadow: var(--shadow); }
+.mcard h2 { margin: 0 0 6px; font-size: 16px; }
+.mcard > p { margin-bottom: 16px; }
+.mcard input, .mcard select { width: 100%; }
+.mcard .btn { margin-top: 4px; }
+.mrow { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
