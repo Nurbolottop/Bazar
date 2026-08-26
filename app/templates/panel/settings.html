@@ -1,126 +1,163 @@
 {% extends 'panel/base.html' %}
 {% block title %}Настройки{% endblock %}
 {% block content %}
-<h1>Настройки системы</h1>
+<h1>Настройки</h1>
 
-<form method="post" enctype="multipart/form-data" class="settings">
+<form method="post" enctype="multipart/form-data" class="st-layout" id="settings-form">
   {% csrf_token %}
 
-  <section class="scard">
-    <div class="scard-info">
-      <h2>Рынок</h2>
-      <p>Название и контакты показываются арендаторам в мобильном приложении.</p>
-    </div>
-    <div class="scard-fields">
-      <div class="field"><label>Наименование рынка</label>
-        <input type="text" name="market_name" value="{{ s.market_name }}"></div>
-      <div class="field"><label>Контакты администрации</label>
-        <input type="text" name="contacts" value="{{ s.contacts }}" placeholder="+996 …"></div>
-    </div>
-  </section>
+  <nav class="st-nav" id="st-nav">
+    <button type="button" data-tab="market" class="is-active">
+      <svg viewBox="0 0 24 24"><path d="M3 9l1.5-5h15L21 9M3 9v11h18V9M3 9h18M9 20v-6h6v6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+      Рынок</button>
+    <button type="button" data-tab="qr">
+      <svg viewBox="0 0 24 24"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h3v3h-3zM20 17v3h-3" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+      Оплата по QR</button>
+    <button type="button" data-tab="billing">
+      <svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M8 3v4M16 3v4M4 10h16" stroke="currentColor" stroke-width="1.8"/></svg>
+      Начисления</button>
+    <button type="button" data-tab="reminders">
+      <svg viewBox="0 0 24 24"><path d="M12 4a5 5 0 0 1 5 5v4l2 3H5l2-3V9a5 5 0 0 1 5-5zM10 19a2 2 0 0 0 4 0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+      Напоминания</button>
+    <button type="button" data-tab="claims">
+      <svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6zM15 3v4h4M9 12h6M9 16h6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+      Заявки</button>
+    <button type="button" data-tab="access">
+      <svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M8 10V7a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+      Вход и приложение</button>
+  </nav>
 
-  <section class="scard">
-    <div class="scard-info">
-      <h2>Оплата по QR-коду</h2>
-      <p>Арендатор сканирует этот QR в приложении своего банка.
-      После замены картинка сразу обновится у всех — без обновления приложения.</p>
-    </div>
-    <div class="scard-fields">
-      <div class="qr-row">
+  <div class="st-body">
+
+    <section class="st-section is-active" data-tab="market">
+      <header><h2>Рынок</h2>
+        <p>Название и контакты видят арендаторы в мобильном приложении.</p></header>
+      <div class="st-field">
+        <label>Наименование рынка</label>
+        <input type="text" name="market_name" value="{{ s.market_name }}">
+      </div>
+      <div class="st-field">
+        <label>Контакты администрации</label>
+        <input type="text" name="contacts" value="{{ s.contacts }}" placeholder="+996 700 000 000">
+        <div class="hint">Телефон или адрес — показывается на экране «Контакты» в приложении</div>
+      </div>
+    </section>
+
+    <section class="st-section" data-tab="qr">
+      <header><h2>Оплата по QR-коду</h2>
+        <p>Арендатор сканирует этот QR в приложении своего банка и переводит аренду.</p></header>
+      <div class="qr-block">
         <div class="qr-preview">
-          {% if s.qr_image %}
-            <img src="{{ s.qr_image.url }}" alt="Текущий QR-код">
-          {% else %}
-            <span class="muted">QR-код ещё<br>не загружен</span>
-          {% endif %}
+          {% if s.qr_image %}<img src="{{ s.qr_image.url }}" alt="Текущий QR-код">
+          {% else %}<span>QR-код ещё<br>не загружен</span>{% endif %}
         </div>
-        <div class="qr-upload">
-          <label class="btn file-btn">
-            Выбрать файл…
+        <div>
+          <label class="btn file-btn">Заменить QR-код…
             <input type="file" name="qr_image" accept="image/*" hidden
-                   onchange="this.closest('.qr-upload').querySelector('.file-name').textContent = this.files[0] ? this.files[0].name : ''">
+              onchange="document.getElementById('qr-file-name').textContent = this.files[0] ? 'Выбран: ' + this.files[0].name : ''">
           </label>
-          <div class="file-name muted"></div>
+          <div class="hint" id="qr-file-name"></div>
+          <div class="hint">После сохранения новый QR сразу появится у всех арендаторов</div>
         </div>
       </div>
-      <div class="field"><label>Инструкция по оплате — русский</label>
-        <textarea name="payment_instruction_ru" placeholder="Отсканируйте QR-код в приложении банка…">{{ s.payment_instruction_ru }}</textarea></div>
-      <div class="field"><label>Инструкция по оплате — кыргызский</label>
-        <textarea name="payment_instruction_ky">{{ s.payment_instruction_ky }}</textarea></div>
-    </div>
-  </section>
-
-  <section class="scard">
-    <div class="scard-info">
-      <h2>Начисления</h2>
-      <p>В дату начисления система создаёт начисления по всем занятым местам.
-      Срок оплаты должен быть строго позже даты начисления — иначе напоминания
-      отправить невозможно.</p>
-    </div>
-    <div class="scard-fields">
-      <div class="fields-row">
-        <div class="field"><label>Дата начисления</label>
-          <div class="day-input"><input type="number" name="default_billing_day" min="1" max="28" value="{{ s.default_billing_day }}"><span>число месяца</span></div></div>
-        <div class="field"><label>Срок оплаты</label>
-          <div class="day-input"><input type="number" name="default_payment_day" min="2" max="31" value="{{ s.default_payment_day }}"><span>число месяца</span></div></div>
+      <div class="st-field">
+        <label>Инструкция по оплате — русский</label>
+        <textarea name="payment_instruction_ru" placeholder="Сделайте скриншот QR-кода и отсканируйте его в приложении банка…">{{ s.payment_instruction_ru }}</textarea>
       </div>
-      <p class="muted">У отдельного арендатора обе даты можно переопределить в его карточке.</p>
-    </div>
-  </section>
-
-  <section class="scard">
-    <div class="scard-info">
-      <h2>Напоминания</h2>
-      <p>Push-напоминания о приближении срока оплаты. Отправляются только тем,
-      у кого есть неоплаченное начисление.</p>
-    </div>
-    <div class="scard-fields">
-      <div class="fields-row">
-        <div class="field"><label>За сколько дней до срока (через запятую, 0 — в день срока)</label>
-          <input type="text" name="reminder_days" value="{{ reminder_days_str }}"></div>
-        <div class="field"><label>Дни уведомления о просрочке (после срока)</label>
-          <input type="text" name="overdue_notice_days" value="{{ overdue_days_str }}"></div>
+      <div class="st-field">
+        <label>Инструкция по оплате — кыргызский</label>
+        <textarea name="payment_instruction_ky">{{ s.payment_instruction_ky }}</textarea>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <section class="scard">
-    <div class="scard-info">
-      <h2>Заявки об оплате</h2>
-      <p>Эти причины предлагаются администратору при отклонении заявки.</p>
-    </div>
-    <div class="scard-fields">
-      <div class="field"><label>Причины отклонения — по одной в строке</label>
-        <textarea name="reject_reasons">{{ reject_reasons_str }}</textarea></div>
-    </div>
-  </section>
+    <section class="st-section" data-tab="billing">
+      <header><h2>Начисления</h2>
+        <p>В дату начисления система сама создаёт начисления по всем занятым местам.</p></header>
+      <div class="st-row">
+        <div class="st-field">
+          <label>Дата начисления</label>
+          <div class="day-input"><input type="number" name="default_billing_day" min="1" max="28" value="{{ s.default_billing_day }}"><span>число месяца</span></div>
+        </div>
+        <div class="st-field">
+          <label>Срок оплаты</label>
+          <div class="day-input"><input type="number" name="default_payment_day" min="2" max="31" value="{{ s.default_payment_day }}"><span>число месяца</span></div>
+        </div>
+      </div>
+      <div class="hint">Срок оплаты должен быть позже даты начисления — иначе система не успеет
+        отправить напоминания. У отдельного арендатора обе даты меняются в его карточке.</div>
+    </section>
 
-  <section class="scard">
-    <div class="scard-info">
-      <h2>Вход и приложение</h2>
-      <p>PIN-код — дополнительная защита входа по ИНН. Включается без выпуска
-      новой версии приложения.</p>
-    </div>
-    <div class="scard-fields">
+    <section class="st-section" data-tab="reminders">
+      <header><h2>Напоминания</h2>
+        <p>Push-напоминания о сроке оплаты. Приходят только тем, у кого есть неоплаченное начисление.</p></header>
+      <div class="st-field">
+        <label>За сколько дней до срока напоминать</label>
+        <input type="text" name="reminder_days" value="{{ reminder_days_str }}">
+        <div class="hint">Числа через запятую; 0 — напоминание в сам день срока. Например: 10, 5, 3, 0</div>
+      </div>
+      <div class="st-field">
+        <label>Уведомление о просрочке — через сколько дней после срока</label>
+        <input type="text" name="overdue_notice_days" value="{{ overdue_days_str }}">
+      </div>
+    </section>
+
+    <section class="st-section" data-tab="claims">
+      <header><h2>Заявки об оплате</h2>
+        <p>Готовые причины, которые предлагаются при отклонении заявки арендатора.</p></header>
+      <div class="st-field">
+        <label>Причины отклонения — по одной в строке</label>
+        <textarea name="reject_reasons" rows="5">{{ reject_reasons_str }}</textarea>
+        <div class="hint">При отклонении можно выбрать причину из этого списка или вписать свою</div>
+      </div>
+    </section>
+
+    <section class="st-section" data-tab="access">
+      <header><h2>Вход и приложение</h2>
+        <p>Арендатор входит в приложение по своему ИНН.</p></header>
       <label class="switch-row">
         <span class="switch">
           <input type="checkbox" name="pin_login_enabled" {% if s.pin_login_enabled %}checked{% endif %}>
           <span class="slider"></span>
         </span>
-        <span>Требовать PIN-код при входе арендатора</span>
+        <span>Требовать PIN-код при входе
+          <div class="hint">Дополнительная защита — включается без обновления приложения</div></span>
       </label>
-      <div class="fields-row">
-        <div class="field"><label>Версия текста согласия на обработку ПДн</label>
-          <input type="text" name="consent_version" value="{{ s.consent_version }}"></div>
-        <div class="field"><label>Минимальная версия приложения</label>
-          <input type="text" name="min_app_version" value="{{ s.min_app_version }}" placeholder="1.0.0"></div>
+      <div class="st-row">
+        <div class="st-field">
+          <label>Версия текста согласия на обработку ПДн</label>
+          <input type="text" name="consent_version" value="{{ s.consent_version }}">
+        </div>
+        <div class="st-field">
+          <label>Минимальная версия приложения</label>
+          <input type="text" name="min_app_version" value="{{ s.min_app_version }}" placeholder="1.0.0">
+          <div class="hint">Приложение старее этой версии попросит пользователя обновиться</div>
+        </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <div class="savebar">
-    <span class="muted">Изменения применяются сразу после сохранения</span>
-    <button class="btn primary">Сохранить настройки</button>
+    <div class="st-save">
+      <button class="btn primary">Сохранить</button>
+      <span class="muted">Применяется сразу для всех арендаторов</span>
+    </div>
   </div>
 </form>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  const nav = document.getElementById('st-nav');
+  const buttons = nav.querySelectorAll('button[data-tab]');
+  const sections = document.querySelectorAll('.st-section');
+  function show(tab) {
+    buttons.forEach(b => b.classList.toggle('is-active', b.dataset.tab === tab));
+    sections.forEach(s => s.classList.toggle('is-active', s.dataset.tab === tab));
+    try { localStorage.setItem('bazar-settings-tab', tab); } catch (e) {}
+  }
+  buttons.forEach(b => b.addEventListener('click', () => show(b.dataset.tab)));
+  try {
+    const saved = localStorage.getItem('bazar-settings-tab');
+    if (saved && nav.querySelector('[data-tab="' + saved + '"]')) show(saved);
+  } catch (e) {}
+})();
+</script>
 {% endblock %}
