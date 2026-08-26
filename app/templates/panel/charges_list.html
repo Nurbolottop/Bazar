@@ -1,6 +1,7 @@
 {% extends 'panel/base.html' %}
 {% block title %}Начисления{% endblock %}
 {% block content %}
+{% include 'panel/_finance_tabs.html' with active='charges' %}
 <h1>Начисления</h1>
 
 <div class="filters">

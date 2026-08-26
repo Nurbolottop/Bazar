@@ -1,0 +1,7 @@
+{# Вкладки раздела «Финансы»: Начисления | Платежи | Должники.
+   Каждая вкладка — прежняя страница со своим адресом (ТЗ-02 п. 5.2). #}
+<div class="fin-tabs">
+  <a href="{% url 'panel:charges' %}" class="{% if active == 'charges' %}is-active{% endif %}">Начисления</a>
+  <a href="{% url 'panel:payments' %}" class="{% if active == 'payments' %}is-active{% endif %}">Платежи</a>
+  <a href="{% url 'panel:debtors' %}" class="{% if active == 'debtors' %}is-active{% endif %}">Должники</a>
+</div>

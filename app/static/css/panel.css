@@ -115,3 +115,10 @@ label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 4px
 .muted { color: var(--muted); font-size: 13px; }
 .amount-input { width: 110px; text-align: right; }
 .mono { font-variant-numeric: tabular-nums; }
+
+/* Вкладки раздела «Финансы» */
+.fin-tabs { display: flex; gap: 4px; margin-bottom: 18px; border-bottom: 2px solid var(--border); }
+.fin-tabs a { padding: 9px 18px; font-size: 14.5px; font-weight: 600; color: var(--muted);
+  border-radius: 8px 8px 0 0; margin-bottom: -2px; border-bottom: 2px solid transparent; }
+.fin-tabs a:hover { color: var(--accent); text-decoration: none; background: #fafbfc; }
+.fin-tabs a.is-active { color: var(--accent); border-bottom-color: var(--accent); background: var(--card); }
