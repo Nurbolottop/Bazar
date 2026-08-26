@@ -22,13 +22,13 @@
       <a href="{% url 'panel:spots' %}" {% if 'spot' in request.resolver_match.url_name %}class="active"{% endif %}>Места</a>
       {% comment %}
         Скрыты по решению от 27.08.2026: Объявления, Отчёты, Импорт данных,
-        Шаблоны уведомлений. Страницы и адреса работают — при необходимости
-        (например, к приёмке по ТЗ) пункты возвращаются сюда одной строкой.
+        Шаблоны уведомлений, Журнал действий. Страницы и адреса работают —
+        при необходимости (например, к приёмке по ТЗ) пункты возвращаются
+        сюда одной строкой.
       {% endcomment %}
       <div class="section">Система</div>
       <a href="{% url 'panel:settings' %}" {% if request.resolver_match.url_name == 'settings' %}class="active"{% endif %}>Настройки</a>
       <a href="{% url 'panel:admins' %}" {% if request.resolver_match.url_name == 'admins' %}class="active"{% endif %}>Администраторы</a>
-      <a href="{% url 'panel:audit' %}" {% if request.resolver_match.url_name == 'audit' %}class="active"{% endif %}>Журнал действий</a>
     </nav>
   </aside>
   <div class="main">
