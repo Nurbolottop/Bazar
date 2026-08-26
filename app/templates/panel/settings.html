@@ -2,60 +2,125 @@
 {% block title %}Настройки{% endblock %}
 {% block content %}
 <h1>Настройки системы</h1>
-<div class="panel" style="max-width:820px">
-  <form method="post" enctype="multipart/form-data">
-    {% csrf_token %}
-    <h2 style="margin-top:0">Рынок</h2>
-    <div class="form-grid">
+
+<form method="post" enctype="multipart/form-data" class="settings">
+  {% csrf_token %}
+
+  <section class="scard">
+    <div class="scard-info">
+      <h2>Рынок</h2>
+      <p>Название и контакты показываются арендаторам в мобильном приложении.</p>
+    </div>
+    <div class="scard-fields">
       <div class="field"><label>Наименование рынка</label>
-        <input type="text" name="market_name" value="{{ s.market_name }}" style="width:100%"></div>
-      <div class="field"><label>Контакты</label>
-        <input type="text" name="contacts" value="{{ s.contacts }}" style="width:100%"></div>
+        <input type="text" name="market_name" value="{{ s.market_name }}"></div>
+      <div class="field"><label>Контакты администрации</label>
+        <input type="text" name="contacts" value="{{ s.contacts }}" placeholder="+996 …"></div>
     </div>
+  </section>
 
-    <h2>Оплата по QR-коду</h2>
-    <div class="form-grid">
-      <div class="field">
-        <label>QR-код — после замены сразу обновится у всех арендаторов</label>
-        {% if s.qr_image %}<img src="{{ s.qr_image.url }}" alt="QR" style="max-width:160px;display:block;margin-bottom:8px">{% endif %}
-        <input type="file" name="qr_image" accept="image/*">
+  <section class="scard">
+    <div class="scard-info">
+      <h2>Оплата по QR-коду</h2>
+      <p>Арендатор сканирует этот QR в приложении своего банка.
+      После замены картинка сразу обновится у всех — без обновления приложения.</p>
+    </div>
+    <div class="scard-fields">
+      <div class="qr-row">
+        <div class="qr-preview">
+          {% if s.qr_image %}
+            <img src="{{ s.qr_image.url }}" alt="Текущий QR-код">
+          {% else %}
+            <span class="muted">QR-код ещё<br>не загружен</span>
+          {% endif %}
+        </div>
+        <div class="qr-upload">
+          <label class="btn file-btn">
+            Выбрать файл…
+            <input type="file" name="qr_image" accept="image/*" hidden
+                   onchange="this.closest('.qr-upload').querySelector('.file-name').textContent = this.files[0] ? this.files[0].name : ''">
+          </label>
+          <div class="file-name muted"></div>
+        </div>
       </div>
-      <div>
-        <div class="field"><label>Инструкция по оплате (рус.)</label>
-          <textarea name="payment_instruction_ru">{{ s.payment_instruction_ru }}</textarea></div>
-        <div class="field"><label>Инструкция по оплате (кырг.)</label>
-          <textarea name="payment_instruction_ky">{{ s.payment_instruction_ky }}</textarea></div>
+      <div class="field"><label>Инструкция по оплате — русский</label>
+        <textarea name="payment_instruction_ru" placeholder="Отсканируйте QR-код в приложении банка…">{{ s.payment_instruction_ru }}</textarea></div>
+      <div class="field"><label>Инструкция по оплате — кыргызский</label>
+        <textarea name="payment_instruction_ky">{{ s.payment_instruction_ky }}</textarea></div>
+    </div>
+  </section>
+
+  <section class="scard">
+    <div class="scard-info">
+      <h2>Начисления</h2>
+      <p>В дату начисления система создаёт начисления по всем занятым местам.
+      Срок оплаты должен быть строго позже даты начисления — иначе напоминания
+      отправить невозможно.</p>
+    </div>
+    <div class="scard-fields">
+      <div class="fields-row">
+        <div class="field"><label>Дата начисления</label>
+          <div class="day-input"><input type="number" name="default_billing_day" min="1" max="28" value="{{ s.default_billing_day }}"><span>число месяца</span></div></div>
+        <div class="field"><label>Срок оплаты</label>
+          <div class="day-input"><input type="number" name="default_payment_day" min="2" max="31" value="{{ s.default_payment_day }}"><span>число месяца</span></div></div>
+      </div>
+      <p class="muted">У отдельного арендатора обе даты можно переопределить в его карточке.</p>
+    </div>
+  </section>
+
+  <section class="scard">
+    <div class="scard-info">
+      <h2>Напоминания</h2>
+      <p>Push-напоминания о приближении срока оплаты. Отправляются только тем,
+      у кого есть неоплаченное начисление.</p>
+    </div>
+    <div class="scard-fields">
+      <div class="fields-row">
+        <div class="field"><label>За сколько дней до срока (через запятую, 0 — в день срока)</label>
+          <input type="text" name="reminder_days" value="{{ reminder_days_str }}"></div>
+        <div class="field"><label>Дни уведомления о просрочке (после срока)</label>
+          <input type="text" name="overdue_notice_days" value="{{ overdue_days_str }}"></div>
       </div>
     </div>
+  </section>
 
-    <h2>Начисления и напоминания</h2>
-    <div class="form-grid">
-      <div class="field"><label>Дата начисления по умолчанию (день месяца)</label>
-        <input type="number" name="default_billing_day" min="1" max="31" value="{{ s.default_billing_day }}"></div>
-      <div class="field"><label>Срок оплаты по умолчанию (день месяца, строго позже даты начисления)</label>
-        <input type="number" name="default_payment_day" min="1" max="31" value="{{ s.default_payment_day }}"></div>
-      <div class="field"><label>Дни напоминаний до срока (через запятую)</label>
-        <input type="text" name="reminder_days" value="{{ reminder_days_str }}"></div>
-      <div class="field"><label>Дни уведомления о просрочке (после срока)</label>
-        <input type="text" name="overdue_notice_days" value="{{ overdue_days_str }}"></div>
+  <section class="scard">
+    <div class="scard-info">
+      <h2>Заявки об оплате</h2>
+      <p>Эти причины предлагаются администратору при отклонении заявки.</p>
     </div>
-
-    <h2>Заявки и вход</h2>
-    <div class="form-grid">
-      <div class="field"><label>Причины отклонения заявок (по одной в строке)</label>
+    <div class="scard-fields">
+      <div class="field"><label>Причины отклонения — по одной в строке</label>
         <textarea name="reject_reasons">{{ reject_reasons_str }}</textarea></div>
-      <div>
-        <div class="field"><label>
+    </div>
+  </section>
+
+  <section class="scard">
+    <div class="scard-info">
+      <h2>Вход и приложение</h2>
+      <p>PIN-код — дополнительная защита входа по ИНН. Включается без выпуска
+      новой версии приложения.</p>
+    </div>
+    <div class="scard-fields">
+      <label class="switch-row">
+        <span class="switch">
           <input type="checkbox" name="pin_login_enabled" {% if s.pin_login_enabled %}checked{% endif %}>
-          Требовать PIN-код при входе арендатора</label></div>
+          <span class="slider"></span>
+        </span>
+        <span>Требовать PIN-код при входе арендатора</span>
+      </label>
+      <div class="fields-row">
         <div class="field"><label>Версия текста согласия на обработку ПДн</label>
           <input type="text" name="consent_version" value="{{ s.consent_version }}"></div>
-        <div class="field"><label>Минимальная версия мобильного приложения</label>
-          <input type="text" name="min_app_version" value="{{ s.min_app_version }}"></div>
+        <div class="field"><label>Минимальная версия приложения</label>
+          <input type="text" name="min_app_version" value="{{ s.min_app_version }}" placeholder="1.0.0"></div>
       </div>
     </div>
+  </section>
 
+  <div class="savebar">
+    <span class="muted">Изменения применяются сразу после сохранения</span>
     <button class="btn primary">Сохранить настройки</button>
-  </form>
-</div>
+  </div>
+</form>
 {% endblock %}
