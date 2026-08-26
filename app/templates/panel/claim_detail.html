@@ -39,7 +39,7 @@
       <tr><th>Период</th><th class="num">Сумма</th><th class="num">Оплачено</th><th>Срок</th><th>Статус</th></tr>
       {% for c in last_charges %}
       <tr>
-        <td>{{ c.period_month }}.{{ c.period_year }}</td>
+        <td>{{ c.period_month|month_ru }} {{ c.period_year }}</td>
         <td class="num mono">{{ c.amount|money }}</td>
         <td class="num mono">{{ c.paid_amount|money }}</td>
         <td>{{ c.due_date|date:'d.m.Y' }}</td>

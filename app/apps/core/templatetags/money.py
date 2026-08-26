@@ -16,3 +16,16 @@ def money(value):
         return value
     text = f'{amount:,.2f}'.replace(',', ' ')
     return text.removesuffix('.00')
+
+
+MONTHS_RU = ['', 'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+             'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь']
+
+
+@register.filter
+def month_ru(value):
+    """Название месяца по номеру: 8 → «Август»."""
+    try:
+        return MONTHS_RU[int(value)]
+    except (ValueError, TypeError, IndexError):
+        return value

@@ -105,7 +105,7 @@
         <th>Срок</th><th>Статус</th><th>Происхождение</th><th></th></tr>
     {% for c in charges %}
     <tr>
-      <td>{{ c.period_month }}.{{ c.period_year }}</td>
+      <td>{{ c.period_month|month_ru }} {{ c.period_year }}</td>
       <td>{{ c.tenant_spot.spot.code|default:'—' }}</td>
       <td class="num mono">{{ c.amount|money }}</td>
       <td class="num mono">{{ c.paid_amount|money }}</td>

@@ -73,7 +73,7 @@
     </form>
   </div>
   <div>
-    <h2 style="margin-top:0">Массовое создание (FR-SP-03)</h2>
+    <h2 style="margin-top:0">Массовое создание</h2>
     <form method="post" action="{% url 'panel:spots_mass_create' %}"
           onsubmit="return confirm('Создать места по шаблону?')">
       {% csrf_token %}

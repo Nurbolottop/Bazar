@@ -17,7 +17,7 @@
       <div class="field"><label>Текст (кырг.)</label><textarea name="body_ky"></textarea></div>
     </div>
     <div class="field">
-      <label>Получатели (FR-NT-06)</label>
+      <label>Получатели</label>
       <select name="audience" onchange="document.getElementById('bsel').style.display = this.value === 'building' ? '' : 'none'">
         {% for value, label in audiences %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
       </select>

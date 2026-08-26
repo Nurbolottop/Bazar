@@ -3,7 +3,7 @@
 {% block content %}
 <h1>Место {{ spot.code }} · {{ spot.building.name }}
   <span class="status {{ spot.status }}">{{ spot.get_status_display }}</span></h1>
-<p class="muted">Какие арендаторы и в какие периоды занимали место (FR-SP-06).</p>
+<p class="muted">Какие арендаторы и в какие периоды занимали это место.</p>
 <div class="panel">
   <table>
     <tr><th>Арендатор</th><th>ИНН</th><th class="num">Сумма/мес</th><th>С</th><th>По</th><th>Статус</th></tr>

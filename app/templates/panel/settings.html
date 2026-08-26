@@ -16,7 +16,7 @@
     <h2>Оплата по QR-коду</h2>
     <div class="form-grid">
       <div class="field">
-        <label>QR-код (замена сразу отражается у всех арендаторов — FR-QR-02)</label>
+        <label>QR-код — после замены сразу обновится у всех арендаторов</label>
         {% if s.qr_image %}<img src="{{ s.qr_image.url }}" alt="QR" style="max-width:160px;display:block;margin-bottom:8px">{% endif %}
         <input type="file" name="qr_image" accept="image/*">
       </div>
@@ -47,7 +47,7 @@
       <div>
         <div class="field"><label>
           <input type="checkbox" name="pin_login_enabled" {% if s.pin_login_enabled %}checked{% endif %}>
-          Требовать PIN-код при входе арендатора (ТЗ-00 п. 8.1)</label></div>
+          Требовать PIN-код при входе арендатора</label></div>
         <div class="field"><label>Версия текста согласия на обработку ПДн</label>
           <input type="text" name="consent_version" value="{{ s.consent_version }}"></div>
         <div class="field"><label>Минимальная версия мобильного приложения</label>
