@@ -672,3 +672,13 @@ label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 5px
 
 /* Атрибут hidden всегда побеждает display:flex/grid у компонентов */
 [hidden] { display: none !important; }
+
+/* Список мест в левой панели (режим просмотра) */
+#map-view-list { display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+#map-view-list .map-props-title { margin-bottom: 0; }
+#map-view-list input { height: 34px; font-size: 13.5px; }
+.map-list--tall { flex: 1; max-height: none; overflow-y: auto; }
+.map-item--placed { cursor: pointer; }
+.map-item--placed:hover { background: #f2f5f3; }
+.map-item--placed.is-active { background: var(--accent-soft); }
+#map-edit-panel { display: flex; flex-direction: column; gap: 10px; min-height: 0; }

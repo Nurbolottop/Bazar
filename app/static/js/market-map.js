@@ -27,6 +27,10 @@
     unplacedCount: byId('map-unplaced-count'),
     unplacedBlock: byId('map-unplaced-block'),
     props: byId('map-props'),
+    viewList: byId('map-view-list'),
+    listSearch: byId('map-list-search'),
+    spotList: byId('map-spot-list'),
+    editPanel: byId('map-edit-panel'),
     propsEmpty: byId('map-props-empty'),
     propsBody: byId('map-props-body'),
     propsSize: byId('map-props-size'),
@@ -323,10 +327,11 @@
   }
 
   function renderProps() {
-    // Панель существует только в режиме редактирования: в просмотре она
-    // полностью убрана из layout (hidden -> display:none), карта шире
-    el.props.hidden = !editMode;
-    if (!editMode) return;
+    // Левая панель всегда одна и та же по ширине (карта не прыгает):
+    // просмотр — список мест, редактор — инструменты. Никогда вместе.
+    el.viewList.hidden = editMode;
+    el.editPanel.hidden = !editMode;
+    if (!editMode) { renderViewList(); return; }
     if (!selected) {
       el.propsEmpty.hidden = false;
       el.propsBody.hidden = true;
@@ -478,6 +483,39 @@
     }
   }
 
+  // ================================================================ список мест (режим просмотра)
+  function renderViewList() {
+    const query = (el.listSearch.value || '').trim().toLowerCase();
+    el.spotList.innerHTML = '';
+    const groups = [];
+    nodes.forEach(g => groups.push(g));
+    groups.sort((a, b) => (a.getAttr('meta').code || '')
+      .localeCompare(b.getAttr('meta').code || '', 'ru'));
+    let shown = 0;
+    groups.forEach(function (group) {
+      const meta = group.getAttr('meta');
+      if (!meta.code) return;
+      if (query && !meta.code.toLowerCase().includes(query) &&
+          !(meta.tenant || '').toLowerCase().includes(query)) return;
+      shown++;
+      const item = document.createElement('div');
+      item.className = 'map-item map-item--placed' +
+        (selected === group ? ' is-active' : '');
+      item.innerHTML = '<b>' + meta.code + '</b><span class="map-item-sub">' +
+        (meta.tenant || 'свободно') + '</span>';
+      item.addEventListener('click', function () {
+        centerOn(meta, 1);
+        select(group);
+        flashNode(group);
+      });
+      el.spotList.appendChild(item);
+    });
+    if (!shown) {
+      el.spotList.innerHTML = '<div class="map-item-none">' +
+        (nodes.size ? 'Ничего не найдено' : 'На карте пока нет мест') + '</div>';
+    }
+  }
+
   // ================================================================ список неразмещённых и drag&drop добавления
   function renderUnplaced() {
     if (!cfg.canEdit) return;
@@ -575,9 +613,13 @@
       if (!found && meta.code && meta.code.toLowerCase().includes(query)) found = group;
     });
     if (!found) { setStatus('Место «' + query + '» на карте не найдено', true); return; }
-    const meta = found.getAttr('meta');
-    centerOn(meta, 1);
-    const rect = found.findOne('.body');
+    centerOn(found.getAttr('meta'), 1);
+    flashNode(found);
+  }
+
+  function flashNode(group) {
+    const meta = group.getAttr('meta');
+    const rect = group.findOne('.body');
     const base = colorFor(meta).stroke;
     let flashes = 0;
     const timer = setInterval(function () {
@@ -606,6 +648,9 @@
     if (e.key === 'Enter') { e.preventDefault(); search(this.value); }
   });
   el.search.addEventListener('change', function () { search(this.value); });
+  el.listSearch.addEventListener('input', function () {
+    if (!editMode) renderViewList();
+  });
   if (el.editToggle) {
     el.editToggle.addEventListener('click', () => setEditMode(!editMode));
     el.propsRemove.addEventListener('click', removeSelected);
