@@ -2,50 +2,83 @@
 {% load static %}
 {% block title %}Карта рынка{% endblock %}
 {% block content %}
-<div class="page-head">
-  <h1>Карта рынка</h1>
-  <div class="actions">
-    <a class="btn" href="{% url 'panel:spots_table' %}">Список мест</a>
-    <a class="btn" href="{% url 'panel:spots_manage' %}">+ Создать места</a>
-    {% if can_edit %}<button type="button" class="btn" id="map-edit-toggle">Редактировать</button>{% endif %}
+<div class="map-app" id="map-app">
+
+  <div class="map-topbar">
+    <div class="map-topbar-left">
+      <button type="button" class="btn" id="map-exit-edit" hidden>← Выйти из редактора</button>
+      <div class="map-search-box" id="map-search-box">
+        <input type="text" id="map-search" placeholder="Поиск места…">
+      </div>
+    </div>
+    <div class="map-zoom-group">
+      <button type="button" id="map-zoom-out" aria-label="Отдалить">−</button>
+      <button type="button" id="map-zoom-level" title="Сбросить масштаб">100%</button>
+      <button type="button" id="map-zoom-in" aria-label="Приблизить">+</button>
+      <button type="button" id="map-fit">Весь рынок</button>
+    </div>
+    <div class="map-topbar-right">
+      <span class="muted" id="map-save-status"></span>
+      {% if can_edit %}<button type="button" class="btn primary" id="map-edit-toggle">Редактировать</button>{% endif %}
+      <a class="btn" id="map-list-link" href="{% url 'panel:spots_table' %}">Список</a>
+    </div>
   </div>
-</div>
 
-<div class="map-toolbar">
-  <input type="text" id="map-search" placeholder="Номер места, например А-15">
-  <button type="button" class="btn" id="map-search-btn">Найти</button>
-  <span class="spacer"></span>
-  <span class="muted" id="map-counts"></span>
-  <span class="muted" id="map-save-status"></span>
-  <button type="button" class="btn small" id="map-zoom-out" aria-label="Отдалить">−</button>
-  <button type="button" class="btn small" id="map-zoom-in" aria-label="Приблизить">+</button>
-  <button type="button" class="btn small" id="map-fit">Весь рынок</button>
-</div>
+  <div class="map-body">
+    <aside class="map-sidebar" id="map-sidebar" hidden>
+      <div class="map-sidebar-head">
+        <b>Торговые места</b>
+        <input type="text" id="map-sidebar-search" placeholder="Поиск…">
+      </div>
+      <div class="map-sidebar-scroll">
+        <div class="map-list-title">Не размещены <span id="map-unplaced-count">0</span></div>
+        <div id="map-unplaced-list" class="map-list"></div>
+        <div class="map-list-title">Размещены <span id="map-placed-count">0</span></div>
+        <div id="map-placed-list" class="map-list"></div>
+      </div>
+      <div class="map-sidebar-foot muted">Перетащите место из списка на карту</div>
+    </aside>
 
-<div class="map-toolbar" id="map-edit-tools" hidden>
-  <select id="map-unplaced"><option value="">— выберите место —</option></select>
-  <button type="button" class="btn primary" id="map-place-btn">Разместить на карте</button>
-  <button type="button" class="btn danger" id="map-delete-btn" hidden>Убрать с карты</button>
-  <span class="muted">Перетащите место, чтобы передвинуть; бросьте на другое — чтобы поменять местами;
-    потяните за угол — чтобы изменить размер.</span>
-</div>
+    <div class="map-stage" id="map-stage-wrap">
+      <div id="map-canvas"></div>
+      <div id="map-tooltip" class="map-tooltip" hidden></div>
+      <div id="map-empty-hint" class="map-empty-hint" hidden>
+        <div class="map-empty-icon">⇱</div>
+        <div id="map-empty-text">На карте пока пусто</div>
+      </div>
+      <div id="map-drop-glow" class="map-drop-glow" hidden></div>
+      <div id="map-confirm" class="map-confirm" hidden>
+        <div id="map-confirm-text"></div>
+        <div class="map-confirm-actions">
+          <button type="button" class="btn small" id="map-confirm-no">Отмена</button>
+          <button type="button" class="btn small primary" id="map-confirm-yes">Поменять</button>
+        </div>
+      </div>
+    </div>
 
-<div class="map-wrap">
-  <div id="map-canvas"></div>
-  <div id="map-tooltip" class="map-tooltip" hidden></div>
-</div>
+    <aside class="map-props" id="map-props" hidden>
+      <div class="map-props-title" id="map-props-code"></div>
+      <div class="map-props-rows" id="map-props-info"></div>
+      <div class="map-props-size">
+        <label>Ширина <input type="number" id="map-prop-w" min="16" max="800"></label>
+        <label>Высота <input type="number" id="map-prop-h" min="16" max="800"></label>
+      </div>
+      <a class="btn small" id="map-props-open" href="#" target="_blank" rel="noopener">Открыть карточку</a>
+      <button type="button" class="btn small danger" id="map-props-remove">Убрать с карты</button>
+    </aside>
+  </div>
 
-<div class="map-legend">
-  <span><i class="cell-demo free"></i> Свободно</span>
-  <span><i class="cell-demo occupied"></i> Занято</span>
-  <span><i class="cell-demo debt"></i> Занято, есть долг</span>
-  <span><i class="cell-demo repair"></i> На ремонте</span>
-  <span class="muted">Колесо мыши — масштаб, перетаскивание фона — перемещение по карте.
-    Клик по месту открывает арендатора.</span>
+  <div class="map-legend">
+    <span><i class="cell-demo free"></i> Свободно</span>
+    <span><i class="cell-demo occupied"></i> Занято</span>
+    <span><i class="cell-demo debt"></i> Есть долг</span>
+    <span><i class="cell-demo repair"></i> Ремонт</span>
+  </div>
 </div>
 
 <script type="application/json" id="map-config">{
   "csrf": "{{ csrf_token }}",
+  "canEdit": {{ can_edit|yesno:'true,false' }},
   "urls": {
     "plan": "{% url 'panel:map_plan' %}",
     "create": "{% url 'panel:map_position_create' %}",

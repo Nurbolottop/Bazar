@@ -1,21 +1,49 @@
-/* Интерактивная карта рынка (Konva.js).
+/* Интерактивная карта рынка (Konva.js) — редактор в стиле Figma.
  *
- * Версия 1: просмотр (zoom/pan/hover/click/поиск) и редактор
- * (разместить место, перетащить, изменить размер, swap двух мест, убрать с карты).
- * Все изменения сохраняются на backend; состояние в браузере не хранится.
+ * Просмотр: карта + поиск + zoom. Редактор: слева список мест (drag&drop
+ * на карту), справа свойства выбранного объекта, минимальный тулбар.
+ * Backend, API и модель позиций не меняются.
  */
 (function () {
   'use strict';
 
   const byId = (id) => document.getElementById(id);
   const cfg = JSON.parse(byId('map-config').textContent);
-  const container = byId('map-canvas');
-  const tooltip = byId('map-tooltip');
-  const statusEl = byId('map-save-status');
-  const unplacedSelect = byId('map-unplaced');
-  const editToggle = byId('map-edit-toggle');
-  const placeBtn = byId('map-place-btn');
-  const deleteBtn = byId('map-delete-btn');
+
+  const el = {
+    stageWrap: byId('map-stage-wrap'),
+    canvas: byId('map-canvas'),
+    tooltip: byId('map-tooltip'),
+    status: byId('map-save-status'),
+    search: byId('map-search'),
+    searchBox: byId('map-search-box'),
+    zoomIn: byId('map-zoom-in'),
+    zoomOut: byId('map-zoom-out'),
+    zoomLevel: byId('map-zoom-level'),
+    fit: byId('map-fit'),
+    editToggle: byId('map-edit-toggle'),
+    exitEdit: byId('map-exit-edit'),
+    listLink: byId('map-list-link'),
+    sidebar: byId('map-sidebar'),
+    sidebarSearch: byId('map-sidebar-search'),
+    unplacedList: byId('map-unplaced-list'),
+    placedList: byId('map-placed-list'),
+    unplacedCount: byId('map-unplaced-count'),
+    placedCount: byId('map-placed-count'),
+    props: byId('map-props'),
+    propsCode: byId('map-props-code'),
+    propsInfo: byId('map-props-info'),
+    propW: byId('map-prop-w'),
+    propH: byId('map-prop-h'),
+    propsOpen: byId('map-props-open'),
+    propsRemove: byId('map-props-remove'),
+    emptyHint: byId('map-empty-hint'),
+    emptyText: byId('map-empty-text'),
+    confirmBox: byId('map-confirm'),
+    confirmText: byId('map-confirm-text'),
+    confirmYes: byId('map-confirm-yes'),
+    confirmNo: byId('map-confirm-no'),
+  };
 
   const COLORS = {
     free:     { fill: '#ffffff', stroke: '#5ea98c', text: '#0b6e4f' },
@@ -24,19 +52,24 @@
     repair:   { fill: '#cfd6d2', stroke: '#aab4ae', text: '#5c6b64' },
     empty:    { fill: '#f4f6f5', stroke: '#c3ccc7', text: '#8a958f' },
   };
+  const HIGHLIGHT = '#1d4fa1';
 
   let stage, planLayer, spotsLayer, transformer;
   let plan = null;
   let editMode = false;
-  let placing = false;
   let selected = null;
-  const nodes = new Map();   // position.id -> Konva.Group
+  let swapTarget = null;          // подсвеченная цель при перетаскивании
+  let pendingSwap = null;         // {sourceGroup, targetGroup}
+  let unplaced = [];
+  const nodes = new Map();        // position.id -> Konva.Group
 
-  // ---------------------------------------------------------------- сеть
+  // ================================================================ сеть
   function setStatus(text, isError) {
-    statusEl.textContent = text || '';
-    statusEl.style.color = isError ? 'var(--danger)' : 'var(--muted)';
-    if (text && !isError) setTimeout(() => { if (statusEl.textContent === text) statusEl.textContent = ''; }, 2500);
+    el.status.textContent = text || '';
+    el.status.style.color = isError ? 'var(--danger)' : 'var(--muted)';
+    if (text && !isError) setTimeout(() => {
+      if (el.status.textContent === text) el.status.textContent = '';
+    }, 2200);
   }
 
   async function api(url, method, body) {
@@ -58,7 +91,9 @@
     return data;
   }
 
-  // ---------------------------------------------------------------- сцена
+  const urlFor = (template, id) => template.replace('/0/', '/' + id + '/');
+
+  // ================================================================ сцена
   function colorFor(p) {
     if (!p.spot_id) return COLORS.empty;
     if (p.status === 'repair') return COLORS.repair;
@@ -70,8 +105,8 @@
   function buildStage() {
     stage = new Konva.Stage({
       container: 'map-canvas',
-      width: container.clientWidth,
-      height: container.clientHeight,
+      width: el.canvas.clientWidth,
+      height: el.canvas.clientHeight,
       draggable: true,
     });
     planLayer = new Konva.Layer({ listening: false });
@@ -79,42 +114,53 @@
     stage.add(planLayer);
     stage.add(spotsLayer);
 
+    // Рабочая область: белый лист с точечной сеткой (только визуально, без snap)
     planLayer.add(new Konva.Rect({
       x: 0, y: 0, width: plan.width, height: plan.height,
-      fill: '#fbfdfc', stroke: '#c9d4ce', strokeWidth: 2, cornerRadius: 8,
+      fill: '#ffffff', stroke: '#b9c6c0', strokeWidth: 2, cornerRadius: 6,
+      shadowColor: 'rgba(16,32,26,.16)', shadowBlur: 18, shadowOffsetY: 4,
     }));
+    const dots = new Konva.Shape({
+      sceneFunc: function (ctx, shape) {
+        const step = 50;
+        ctx.beginPath();
+        for (let x = step; x < plan.width; x += step)
+          for (let y = step; y < plan.height; y += step) {
+            ctx.moveTo(x, y);
+            ctx.arc(x, y, 1.1, 0, Math.PI * 2);
+          }
+        ctx.fillStyle = '#d5ddd8';
+        ctx.fill();
+      },
+      listening: false,
+    });
+    dots.cache({ x: 0, y: 0, width: plan.width, height: plan.height });
+    planLayer.add(dots);
 
     transformer = new Konva.Transformer({
-      rotateEnabled: false,
-      flipEnabled: false,
-      keepRatio: false,
-      anchorSize: 9,
-      anchorCornerRadius: 3,
-      borderStroke: '#1d4fa1',
-      anchorStroke: '#1d4fa1',
-      boundBoxFunc: function (oldBox, newBox) {
-        if (newBox.width < 12 || newBox.height < 12) return oldBox;
-        return newBox;
-      },
+      rotateEnabled: false, flipEnabled: false, keepRatio: false,
+      anchorSize: 9, anchorCornerRadius: 3,
+      borderStroke: HIGHLIGHT, anchorStroke: HIGHLIGHT,
+      boundBoxFunc: (oldBox, newBox) =>
+        (newBox.width < 12 || newBox.height < 12) ? oldBox : newBox,
     });
     spotsLayer.add(transformer);
 
-    // Zoom к курсору
     stage.on('wheel', function (e) {
       e.evt.preventDefault();
-      const direction = e.evt.deltaY > 0 ? -1 : 1;
-      zoomAt(stage.getPointerPosition(), direction > 0 ? 1.1 : 1 / 1.1);
+      zoomAt(stage.getPointerPosition(), e.evt.deltaY > 0 ? 1 / 1.1 : 1.1);
     });
-
     stage.on('click tap', function (e) {
-      if (placing && e.target.getParent() !== transformer) { placeAt(); return; }
       if (e.target === stage || e.target.getLayer() === planLayer) select(null);
     });
+    stage.on('dragmove', updateZoomLabel);
+    window.addEventListener('resize', resizeStage);
+  }
 
-    window.addEventListener('resize', function () {
-      stage.width(container.clientWidth);
-      stage.height(container.clientHeight);
-    });
+  function resizeStage() {
+    if (!stage) return;
+    stage.width(el.canvas.clientWidth);
+    stage.height(el.canvas.clientHeight);
   }
 
   function zoomAt(point, factor) {
@@ -130,28 +176,45 @@
       x: point.x - mapPoint.x * newScale,
       y: point.y - mapPoint.y * newScale,
     });
+    updateZoomLabel();
+  }
+
+  function setZoom(scale, center) {
+    stage.scale({ x: scale, y: scale });
+    if (center) stage.position(center);
+    updateZoomLabel();
+  }
+
+  function updateZoomLabel() {
+    el.zoomLevel.textContent = Math.round(stage.scaleX() * 100) + '%';
   }
 
   function fitAll() {
-    const padding = 40;
+    const padding = 60;
     const scale = Math.min(
       (stage.width() - padding) / plan.width,
       (stage.height() - padding) / plan.height, 2);
-    stage.scale({ x: scale, y: scale });
-    stage.position({
+    setZoom(scale, {
       x: (stage.width() - plan.width * scale) / 2,
       y: (stage.height() - plan.height * scale) / 2,
     });
   }
 
-  // ---------------------------------------------------------------- узлы
+  function centerOn(meta, minScale) {
+    const scale = Math.max(stage.scaleX(), minScale || 1);
+    setZoom(scale, {
+      x: stage.width() / 2 - (meta.x + meta.width / 2) * scale,
+      y: stage.height() / 2 - (meta.y + meta.height / 2) * scale,
+    });
+  }
+
+  // ================================================================ узлы
   function makeNode(p) {
     const c = colorFor(p);
     const group = new Konva.Group({ x: p.x, y: p.y, draggable: editMode });
     const rect = new Konva.Rect({
-      width: p.width, height: p.height, fill: c.fill, stroke: c.stroke,
-      strokeWidth: 1.5, cornerRadius: 4,
-      shadowColor: 'rgba(16,32,26,.35)', shadowBlur: 0, shadowOpacity: 0,
+      name: 'body', width: p.width, height: p.height,
+      fill: c.fill, stroke: c.stroke, strokeWidth: 1.5, cornerRadius: 4,
     });
     const label = new Konva.Text({
       width: p.width, height: p.height, text: p.code || '·',
@@ -165,36 +228,41 @@
 
     group.on('mouseenter', function () {
       stage.container().style.cursor = editMode ? 'move' : 'pointer';
-      showTooltip(p);
+      if (!editMode) showTooltip(p);
     });
     group.on('mousemove', moveTooltip);
     group.on('mouseleave', function () {
-      stage.container().style.cursor = placing ? 'crosshair' : 'grab';
-      tooltip.hidden = true;
+      stage.container().style.cursor = 'grab';
+      el.tooltip.hidden = true;
     });
 
     group.on('click tap', function (e) {
       e.cancelBubble = true;
       const meta = group.getAttr('meta');
       if (editMode) { select(group); return; }
-      if (meta.tenant_id) window.location = cfg.urls.tenant.replace('/0/', '/' + meta.tenant_id + '/');
-      else if (meta.spot_id) window.location = cfg.urls.spotHistory.replace('/0/', '/' + meta.spot_id + '/');
+      if (meta.tenant_id) window.location = urlFor(cfg.urls.tenant, meta.tenant_id);
+      else if (meta.spot_id) window.location = urlFor(cfg.urls.spotHistory, meta.spot_id);
     });
 
+    group.on('dragmove', function () {
+      const target = findOverlap(group);
+      if (target !== swapTarget) {
+        clearSwapHighlight();
+        swapTarget = target;
+        if (target) target.findOne('.body').stroke(HIGHLIGHT).strokeWidth(3);
+      }
+    });
     group.on('dragend', function () { onDragEnd(group); });
     group.on('transformend', function () { onTransformEnd(group); });
     return group;
   }
 
-  function renderPositions(positions) {
-    nodes.forEach(n => n.destroy());
-    nodes.clear();
-    positions.forEach(function (p) {
-      const node = makeNode(p);
-      nodes.set(p.id, node);
-      spotsLayer.add(node);
-    });
-    transformer.moveToTop();
+  function clearSwapHighlight() {
+    if (swapTarget) {
+      const meta = swapTarget.getAttr('meta');
+      swapTarget.findOne('.body').stroke(colorFor(meta).stroke).strokeWidth(1.5);
+      swapTarget = null;
+    }
   }
 
   function refreshNode(p) {
@@ -204,17 +272,39 @@
     nodes.set(p.id, node);
     spotsLayer.add(node);
     transformer.moveToTop();
+    updateEmptyHint();
+    return node;
   }
 
-  // ---------------------------------------------------------------- tooltip
+  function renderPositions(positions) {
+    nodes.forEach(n => n.destroy());
+    nodes.clear();
+    positions.forEach(p => {
+      const node = makeNode(p);
+      nodes.set(p.id, node);
+      spotsLayer.add(node);
+    });
+    transformer.moveToTop();
+    updateEmptyHint();
+  }
+
+  function updateEmptyHint() {
+    const empty = nodes.size === 0;
+    el.emptyHint.hidden = !empty;
+    el.emptyText.textContent = empty
+      ? (editMode ? 'Перетащите торговое место из панели слева на карту'
+                  : 'На карте пока пусто — нажмите «Редактировать», чтобы расставить места')
+      : '';
+  }
+
+  // ================================================================ tooltip
   function showTooltip(p) {
-    if (editMode) return;
     let html = '<b>Место ' + (p.code || '—') + '</b>';
     if (p.building) html += '<br>Корпус: ' + p.building;
     if (p.tenant) html += '<br>Арендатор: ' + p.tenant;
-    html += '<br>Статус: ' + statusText(p);
-    tooltip.innerHTML = html;
-    tooltip.hidden = false;
+    html += '<br>' + statusText(p);
+    el.tooltip.innerHTML = html;
+    el.tooltip.hidden = false;
   }
   function statusText(p) {
     if (!p.spot_id) return 'пустая позиция';
@@ -223,30 +313,55 @@
     return 'свободно';
   }
   function moveTooltip(e) {
-    tooltip.style.left = (e.evt.offsetX + 14) + 'px';
-    tooltip.style.top = (e.evt.offsetY + 14) + 'px';
+    el.tooltip.style.left = (e.evt.offsetX + 14) + 'px';
+    el.tooltip.style.top = (e.evt.offsetY + 14) + 'px';
   }
 
-  // ---------------------------------------------------------------- редактор
+  // ================================================================ выбор и панель свойств
   function select(group) {
     selected = group;
-    transformer.nodes(group ? [group] : []);
-    if (deleteBtn) deleteBtn.hidden = !group;
+    transformer.nodes(group && editMode ? [group] : []);
+    renderProps();
+    markPlacedActive();
   }
 
-  function setEditMode(on) {
-    editMode = on;
-    select(null);
-    tooltip.hidden = true;
-    nodes.forEach(n => n.draggable(on));
-    document.getElementById('map-edit-tools').hidden = !on;
-    editToggle.textContent = on ? 'Готово' : 'Редактировать';
-    editToggle.classList.toggle('primary', on);
-    if (!on) stopPlacing();
+  function renderProps() {
+    if (!editMode || !selected) { el.props.hidden = true; return; }
+    const meta = selected.getAttr('meta');
+    el.props.hidden = false;
+    el.propsCode.textContent = 'Место ' + (meta.code || '—');
+    let rows = '';
+    rows += propRow('Статус', statusText(meta));
+    if (meta.building) rows += propRow('Корпус', meta.building);
+    if (meta.tenant) rows += propRow('Арендатор', meta.tenant);
+    el.propsInfo.innerHTML = rows;
+    el.propW.value = Math.round(meta.width);
+    el.propH.value = Math.round(meta.height);
+    if (meta.tenant_id) {
+      el.propsOpen.href = urlFor(cfg.urls.tenant, meta.tenant_id);
+      el.propsOpen.hidden = false;
+    } else if (meta.spot_id) {
+      el.propsOpen.href = urlFor(cfg.urls.spotHistory, meta.spot_id);
+      el.propsOpen.hidden = false;
+    } else el.propsOpen.hidden = true;
+  }
+  const propRow = (k, v) => '<div class="map-prop-row"><span>' + k + '</span><b>' + v + '</b></div>';
+
+  function applySizeFromProps() {
+    if (!selected) return;
+    const width = parseInt(el.propW.value, 10);
+    const height = parseInt(el.propH.value, 10);
+    if (!width || !height) return;
+    const rect = selected.findOne('.body');
+    const label = selected.findOne('Text');
+    rect.size({ width: width, height: height });
+    label.size({ width: width, height: height });
+    saveGeometry(selected);
   }
 
+  // ================================================================ сохранение геометрии
   function geometryOf(group) {
-    const rect = group.findOne('Rect');
+    const rect = group.findOne('.body');
     return {
       x: Math.round(group.x()), y: Math.round(group.y()),
       width: Math.round(rect.width() * group.scaleX()),
@@ -254,25 +369,44 @@
     };
   }
 
-  async function onDragEnd(group) {
+  async function saveGeometry(group) {
     const meta = group.getAttr('meta');
-    const target = findOverlap(group);
-    if (target && meta.spot_id) {
-      const targetMeta = target.getAttr('meta');
-      const question = targetMeta.spot_id
-        ? 'Поменять местами ' + meta.code + ' и ' + targetMeta.code + '?'
-        : 'Перенести ' + meta.code + ' в пустую позицию?';
-      if (confirm(question)) {
-        try {
-          const result = await api(cfg.urls.transfer, 'POST',
-            { source_id: meta.id, target_id: targetMeta.id });
-          refreshNode(result.source);
-          refreshNode(result.target);
-          select(null);
-          return;
-        } catch (e) { /* откат ниже */ }
-      }
+    const geometry = geometryOf(group);
+    try {
+      const updated = await api(urlFor(cfg.urls.update, meta.id), 'PATCH',
+        Object.assign({ updated_at: meta.updated_at }, geometry));
+      group.setAttr('meta', updated);
+      group.position({ x: updated.x, y: updated.y });
+      renderProps();
+    } catch (e) {
+      if (e.status === 409) { await load(); return; }
       group.position({ x: meta.x, y: meta.y });
+      const rect = group.findOne('.body');
+      const label = group.findOne('Text');
+      rect.size({ width: meta.width, height: meta.height });
+      label.size({ width: meta.width, height: meta.height });
+      renderProps();
+    }
+  }
+
+  async function onTransformEnd(group) {
+    const rect = group.findOne('.body');
+    const label = group.findOne('Text');
+    const width = rect.width() * group.scaleX();
+    const height = rect.height() * group.scaleY();
+    group.scale({ x: 1, y: 1 });
+    rect.size({ width: width, height: height });
+    label.size({ width: width, height: height });
+    saveGeometry(group);
+  }
+
+  // ================================================================ перемещение и swap
+  function onDragEnd(group) {
+    const meta = group.getAttr('meta');
+    const target = swapTarget;
+    clearSwapHighlight();
+    if (target && meta.spot_id) {
+      askSwap(group, target);
       return;
     }
     saveGeometry(group);
@@ -290,142 +424,233 @@
     return found;
   }
 
-  async function onTransformEnd(group) {
-    const rect = group.findOne('Rect');
-    const label = group.findOne('Text');
-    const width = rect.width() * group.scaleX();
-    const height = rect.height() * group.scaleY();
-    group.scale({ x: 1, y: 1 });
-    rect.size({ width: width, height: height });
-    label.size({ width: width, height: height });
-    saveGeometry(group);
+  function askSwap(sourceGroup, targetGroup) {
+    const source = sourceGroup.getAttr('meta');
+    const target = targetGroup.getAttr('meta');
+    pendingSwap = { sourceGroup: sourceGroup, targetGroup: targetGroup };
+    el.confirmText.textContent = target.spot_id
+      ? 'Поменять местами ' + source.code + ' и ' + target.code + '?'
+      : 'Перенести ' + source.code + ' в пустую позицию?';
+    el.confirmYes.textContent = target.spot_id ? 'Поменять' : 'Перенести';
+    el.confirmBox.hidden = false;
+    targetGroup.findOne('.body').stroke(HIGHLIGHT).strokeWidth(3);
   }
 
-  async function saveGeometry(group) {
-    const meta = group.getAttr('meta');
-    const geometry = geometryOf(group);
+  function closeSwap(revert) {
+    if (!pendingSwap) return;
+    const { sourceGroup, targetGroup } = pendingSwap;
+    const targetMeta = targetGroup.getAttr('meta');
+    targetGroup.findOne('.body').stroke(colorFor(targetMeta).stroke).strokeWidth(1.5);
+    if (revert) {
+      const meta = sourceGroup.getAttr('meta');
+      sourceGroup.position({ x: meta.x, y: meta.y });
+    }
+    el.confirmBox.hidden = true;
+    pendingSwap = null;
+  }
+
+  async function confirmSwap() {
+    if (!pendingSwap) return;
+    const { sourceGroup, targetGroup } = pendingSwap;
+    const source = sourceGroup.getAttr('meta');
+    const target = targetGroup.getAttr('meta');
+    closeSwap(false);
     try {
-      const updated = await api(
-        cfg.urls.update.replace('/0/', '/' + meta.id + '/'), 'PATCH',
-        Object.assign({ updated_at: meta.updated_at }, geometry));
-      group.setAttr('meta', updated);
-      group.position({ x: updated.x, y: updated.y });
+      const result = await api(cfg.urls.transfer, 'POST',
+        { source_id: source.id, target_id: target.id });
+      refreshNode(result.source);
+      refreshNode(result.target);
+      select(null);
+      renderSidebar();
     } catch (e) {
-      if (e.status === 409) { await load(); return; }
-      group.position({ x: meta.x, y: meta.y });   // откат
-      const rect = group.findOne('Rect');
-      const label = group.findOne('Text');
-      rect.size({ width: meta.width, height: meta.height });
-      label.size({ width: meta.width, height: meta.height });
+      sourceGroup.position({ x: source.x, y: source.y });
     }
   }
 
-  // Размещение нового места: выбрал в списке → клик по холсту
-  function startPlacing() {
-    if (!unplacedSelect.value) { alert('Выберите место из списка.'); return; }
-    placing = true;
-    stage.container().style.cursor = 'crosshair';
-    placeBtn.textContent = 'Кликните по карте…';
-  }
-  function stopPlacing() {
-    placing = false;
-    stage.container().style.cursor = 'grab';
-    if (placeBtn) placeBtn.textContent = 'Разместить на карте';
-  }
-  async function placeAt() {
-    const pointer = stage.getPointerPosition();
-    const scale = stage.scaleX();
-    const x = Math.max(0, Math.round((pointer.x - stage.x()) / scale - 40));
-    const y = Math.max(0, Math.round((pointer.y - stage.y()) / scale - 25));
-    const spotId = parseInt(unplacedSelect.value, 10);
-    stopPlacing();
-    try {
-      const p = await api(cfg.urls.create, 'POST',
-        { spot_id: spotId, x: x, y: y, width: 80, height: 50 });
-      refreshNode(p);
-      unplacedSelect.querySelector('option[value="' + spotId + '"]').remove();
-      const group = nodes.get(p.id);
-      select(group);
-    } catch (e) {}
+  // ================================================================ sidebar и drag&drop добавления
+  function renderSidebar() {
+    if (!cfg.canEdit) return;
+    const query = (el.sidebarSearch.value || '').trim().toLowerCase();
+
+    el.unplacedList.innerHTML = '';
+    const visibleUnplaced = unplaced.filter(
+      s => !query || s.code.toLowerCase().includes(query));
+    visibleUnplaced.forEach(function (s) {
+      const item = document.createElement('div');
+      item.className = 'map-item map-item--drag';
+      item.draggable = true;
+      item.innerHTML = '<span class="map-item-grip">⋮⋮</span><b>' + s.code +
+        '</b><span class="map-item-sub">' + s.building + '</span>';
+      item.addEventListener('dragstart', function (e) {
+        e.dataTransfer.setData('text/plain', String(s.id));
+        e.dataTransfer.effectAllowed = 'copy';
+        el.stageWrap.classList.add('map-drop-ready');
+      });
+      item.addEventListener('dragend',
+        () => el.stageWrap.classList.remove('map-drop-ready'));
+      el.unplacedList.appendChild(item);
+    });
+    if (!visibleUnplaced.length) {
+      el.unplacedList.innerHTML = '<div class="map-item-none">' +
+        (unplaced.length ? 'Не найдено' : 'Все места размещены') + '</div>';
+    }
+    el.unplacedCount.textContent = unplaced.length;
+
+    el.placedList.innerHTML = '';
+    let placedTotal = 0;
+    nodes.forEach(function (group) {
+      const meta = group.getAttr('meta');
+      if (!meta.code) return;
+      placedTotal++;
+      if (query && !meta.code.toLowerCase().includes(query)) return;
+      const item = document.createElement('div');
+      item.className = 'map-item map-item--placed';
+      item.dataset.positionId = meta.id;
+      item.innerHTML = '<span class="map-item-check">✓</span><b>' + meta.code +
+        '</b><span class="map-item-sub">' + (meta.tenant || '') + '</span>';
+      item.addEventListener('click', function () {
+        centerOn(meta, 1);
+        select(group);
+      });
+      el.placedList.appendChild(item);
+    });
+    el.placedCount.textContent = placedTotal;
+    markPlacedActive();
   }
 
-  async function deleteSelected() {
+  function markPlacedActive() {
+    const activeId = selected ? String(selected.getAttr('meta').id) : null;
+    el.placedList.querySelectorAll('.map-item--placed').forEach(function (item) {
+      item.classList.toggle('is-active', item.dataset.positionId === activeId);
+    });
+  }
+
+  function bindDrop() {
+    el.canvas.addEventListener('dragover', function (e) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+    });
+    el.canvas.addEventListener('drop', async function (e) {
+      e.preventDefault();
+      el.stageWrap.classList.remove('map-drop-ready');
+      const spotId = parseInt(e.dataTransfer.getData('text/plain'), 10);
+      if (!spotId || !editMode) return;
+      stage.setPointersPositions(e);
+      const pointer = stage.getPointerPosition();
+      const scale = stage.scaleX();
+      const x = Math.max(0, Math.round((pointer.x - stage.x()) / scale - 40));
+      const y = Math.max(0, Math.round((pointer.y - stage.y()) / scale - 25));
+      try {
+        const p = await api(cfg.urls.create, 'POST',
+          { spot_id: spotId, x: x, y: y, width: 80, height: 50 });
+        const node = refreshNode(p);
+        unplaced = unplaced.filter(s => s.id !== spotId);
+        select(node);
+        renderSidebar();
+      } catch (e2) {}
+    });
+  }
+
+  async function removeSelected() {
     if (!selected) return;
     const meta = selected.getAttr('meta');
-    if (!confirm('Убрать ' + (meta.code || 'позицию') + ' с карты? Само место и его история останутся в системе.')) return;
+    if (!confirm('Убрать ' + (meta.code || 'позицию') +
+        ' с карты? Само место и его история останутся в системе.')) return;
     try {
-      await api(cfg.urls.delete.replace('/0/', '/' + meta.id + '/'), 'DELETE');
+      await api(urlFor(cfg.urls.delete, meta.id), 'DELETE');
       selected.destroy();
       nodes.delete(meta.id);
       select(null);
-      if (meta.spot_id) {
-        const option = document.createElement('option');
-        option.value = meta.spot_id;
-        option.textContent = meta.code + ' (' + (meta.building || '') + ')';
-        unplacedSelect.appendChild(option);
-      }
+      if (meta.spot_id) unplaced.push({
+        id: meta.spot_id, code: meta.code, building: meta.building || '', status: meta.status,
+      });
+      unplaced.sort((a, b) => a.code.localeCompare(b.code, 'ru'));
+      renderSidebar();
+      updateEmptyHint();
     } catch (e) {}
   }
 
-  // ---------------------------------------------------------------- поиск
+  // ================================================================ режимы
+  function setEditMode(on) {
+    editMode = on;
+    select(null);
+    closeSwap(true);
+    el.tooltip.hidden = true;
+    nodes.forEach(n => n.draggable(on));
+    document.getElementById('map-app').classList.toggle('is-editing', on);
+    el.sidebar.hidden = !on;
+    el.editToggle.hidden = on;
+    el.exitEdit.hidden = !on;
+    el.searchBox.hidden = on;
+    el.listLink.hidden = on;
+    updateEmptyHint();
+    if (on) renderSidebar();
+    setTimeout(resizeStage, 30);
+  }
+
+  // ================================================================ поиск (просмотр)
   function search(query) {
     query = query.trim().toLowerCase();
     if (!query) return;
     let found = null;
     nodes.forEach(function (group) {
       const meta = group.getAttr('meta');
-      if (!found && meta.code && meta.code.toLowerCase().indexOf(query) !== -1) found = group;
+      if (!found && meta.code && meta.code.toLowerCase().includes(query)) found = group;
     });
     if (!found) { setStatus('Место «' + query + '» на карте не найдено', true); return; }
     const meta = found.getAttr('meta');
-    const scale = Math.max(stage.scaleX(), 1);
-    stage.scale({ x: scale, y: scale });
-    stage.position({
-      x: stage.width() / 2 - (meta.x + meta.width / 2) * scale,
-      y: stage.height() / 2 - (meta.y + meta.height / 2) * scale,
-    });
-    const rect = found.findOne('Rect');
-    const original = rect.strokeWidth();
+    centerOn(meta, 1);
+    const rect = found.findOne('.body');
+    const base = colorFor(meta).stroke;
     let flashes = 0;
     const timer = setInterval(function () {
-      rect.strokeWidth(rect.strokeWidth() === original ? 5 : original);
-      rect.stroke(rect.strokeWidth() === original ? colorFor(meta).stroke : '#1d4fa1');
-      if (++flashes > 7) { clearInterval(timer); rect.strokeWidth(original); rect.stroke(colorFor(meta).stroke); }
-    }, 220);
+      const on = flashes % 2 === 0;
+      rect.stroke(on ? HIGHLIGHT : base).strokeWidth(on ? 4 : 1.5);
+      if (++flashes > 7) { clearInterval(timer); rect.stroke(base).strokeWidth(1.5); }
+    }, 200);
   }
 
-  // ---------------------------------------------------------------- загрузка
+  // ================================================================ загрузка
   async function load() {
     const data = await (await fetch(cfg.urls.plan)).json();
     plan = data.plan;
+    unplaced = data.unplaced;
     if (!stage) { buildStage(); fitAll(); }
     renderPositions(data.positions);
-    unplacedSelect.innerHTML = '<option value="">— выберите место —</option>' +
-      data.unplaced.map(s => '<option value="' + s.id + '">' + s.code + ' (' + s.building + ')</option>').join('');
-    document.getElementById('map-counts').textContent =
-      'на карте: ' + data.positions.length + ' · не размещено: ' + data.unplaced.length;
+    if (editMode) renderSidebar();
   }
 
-  // ---------------------------------------------------------------- события
-  document.getElementById('map-zoom-in').addEventListener('click', () => zoomAt(null, 1.25));
-  document.getElementById('map-zoom-out').addEventListener('click', () => zoomAt(null, 1 / 1.25));
-  document.getElementById('map-fit').addEventListener('click', fitAll);
-  document.getElementById('map-search-btn').addEventListener('click',
-    () => search(document.getElementById('map-search').value));
-  document.getElementById('map-search').addEventListener('keydown', function (e) {
+  // ================================================================ события
+  el.zoomIn.addEventListener('click', () => zoomAt(null, 1.25));
+  el.zoomOut.addEventListener('click', () => zoomAt(null, 1 / 1.25));
+  el.zoomLevel.addEventListener('click', () => setZoom(1, stage.position()));
+  el.fit.addEventListener('click', fitAll);
+  el.search.addEventListener('keydown', function (e) {
     if (e.key === 'Enter') { e.preventDefault(); search(this.value); }
   });
-  if (editToggle) editToggle.addEventListener('click', () => setEditMode(!editMode));
-  if (placeBtn) placeBtn.addEventListener('click', startPlacing);
-  if (deleteBtn) deleteBtn.addEventListener('click', deleteSelected);
-  document.addEventListener('keydown', function (e) {
-    if (editMode && (e.key === 'Delete' || e.key === 'Backspace') &&
-        selected && document.activeElement.tagName !== 'INPUT') {
-      e.preventDefault();
-      deleteSelected();
-    }
-    if (e.key === 'Escape' && placing) stopPlacing();
-  });
+  el.search.addEventListener('change', function () { search(this.value); });
+  if (el.editToggle) {
+    el.editToggle.addEventListener('click', () => setEditMode(true));
+    el.exitEdit.addEventListener('click', () => setEditMode(false));
+    el.sidebarSearch.addEventListener('input', renderSidebar);
+    el.propsRemove.addEventListener('click', removeSelected);
+    el.propW.addEventListener('change', applySizeFromProps);
+    el.propH.addEventListener('change', applySizeFromProps);
+    el.confirmYes.addEventListener('click', confirmSwap);
+    el.confirmNo.addEventListener('click', () => closeSwap(true));
+    bindDrop();
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') {
+        if (!el.confirmBox.hidden) { closeSwap(true); return; }
+        if (editMode) select(null);
+      }
+      if (editMode && (e.key === 'Delete' || e.key === 'Backspace') && selected &&
+          !['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
+        e.preventDefault();
+        removeSelected();
+      }
+    });
+  }
 
   load().catch(() => setStatus('Не удалось загрузить карту', true));
 })();
