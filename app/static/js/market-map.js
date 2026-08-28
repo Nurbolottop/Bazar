@@ -29,6 +29,7 @@
     props: byId('map-props'),
     propsEmpty: byId('map-props-empty'),
     propsBody: byId('map-props-body'),
+    propsSize: byId('map-props-size'),
     propsCode: byId('map-props-code'),
     propsInfo: byId('map-props-info'),
     propW: byId('map-prop-w'),
@@ -236,10 +237,9 @@
 
     group.on('click tap', function (e) {
       e.cancelBubble = true;
-      const meta = group.getAttr('meta');
-      if (editMode) { select(group); return; }
-      if (meta.tenant_id) window.location = urlFor(cfg.urls.tenant, meta.tenant_id);
-      else if (meta.spot_id) window.location = urlFor(cfg.urls.spotHistory, meta.spot_id);
+      // В обоих режимах клик выделяет место; переход — кнопкой «Открыть карточку»
+      select(group);
+      el.tooltip.hidden = true;
     });
 
     group.on('dragmove', function () {
@@ -323,18 +323,21 @@
   }
 
   function renderProps() {
-    el.props.hidden = !editMode;
-    if (!editMode) return;
+    // Панель видна всегда: просмотр — только информация,
+    // редактор — информация + инструменты изменения
+    el.props.hidden = false;
     if (!selected) {
       el.propsEmpty.hidden = false;
       el.propsBody.hidden = true;
-      el.unplacedBlock.hidden = false;
-      renderUnplaced();
+      el.unplacedBlock.hidden = !editMode;   // размещение мест — только в редакторе
+      if (editMode) renderUnplaced();
       return;
     }
     el.unplacedBlock.hidden = true;
     el.propsEmpty.hidden = true;
     el.propsBody.hidden = false;
+    el.propsSize.hidden = !editMode;         // Ширина/Высота — только в редакторе
+    el.propsRemove.hidden = !editMode;       // «Убрать с карты» — только в редакторе
     const meta = selected.getAttr('meta');
     el.propsCode.textContent = 'Место ' + (meta.code || '—');
     let rows = '';
@@ -557,8 +560,6 @@
     // Изменения сохраняются сразу через API; «Сохранить» завершает режим.
     el.editToggle.textContent = on ? 'Сохранить' : 'Редактировать';
     el.editToggle.classList.toggle('primary', on);
-    el.searchBox.hidden = on;
-    el.listLink.hidden = on;
     updateEmptyHint();
     setTimeout(resizeStage, 30);
   }
