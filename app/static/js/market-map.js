@@ -22,7 +22,6 @@
     zoomLevel: byId('map-zoom-level'),
     fit: byId('map-fit'),
     editToggle: byId('map-edit-toggle'),
-    exitEdit: byId('map-exit-edit'),
     listLink: byId('map-list-link'),
     unplacedList: byId('map-unplaced-list'),
     unplacedCount: byId('map-unplaced-count'),
@@ -554,8 +553,10 @@
     el.tooltip.hidden = true;
     nodes.forEach(n => n.draggable(on));
     document.getElementById('map-app').classList.toggle('is-editing', on);
-    el.editToggle.hidden = on;
-    el.exitEdit.hidden = !on;
+    // Одна кнопка на одном месте: «Редактировать» ↔ «Сохранить».
+    // Изменения сохраняются сразу через API; «Сохранить» завершает режим.
+    el.editToggle.textContent = on ? 'Сохранить' : 'Редактировать';
+    el.editToggle.classList.toggle('primary', on);
     el.searchBox.hidden = on;
     el.listLink.hidden = on;
     updateEmptyHint();
@@ -604,8 +605,7 @@
   });
   el.search.addEventListener('change', function () { search(this.value); });
   if (el.editToggle) {
-    el.editToggle.addEventListener('click', () => setEditMode(true));
-    el.exitEdit.addEventListener('click', () => setEditMode(false));
+    el.editToggle.addEventListener('click', () => setEditMode(!editMode));
     el.propsRemove.addEventListener('click', removeSelected);
     el.propW.addEventListener('change', applySizeFromProps);
     el.propH.addEventListener('change', applySizeFromProps);

@@ -6,7 +6,6 @@
 
   <div class="map-topbar">
     <div class="map-topbar-left">
-      <button type="button" class="btn" id="map-exit-edit" hidden>← Выйти из редактора</button>
       <div class="map-search-box" id="map-search-box">
         <input type="text" id="map-search" placeholder="Поиск места…">
       </div>
@@ -19,7 +18,7 @@
     </div>
     <div class="map-topbar-right">
       <span class="muted" id="map-save-status"></span>
-      {% if can_edit %}<button type="button" class="btn primary" id="map-edit-toggle">Редактировать</button>{% endif %}
+      {% if can_edit %}<button type="button" class="btn" id="map-edit-toggle">Редактировать</button>{% endif %}
       <a class="btn" id="map-list-link" href="{% url 'panel:spots_table' %}">Список</a>
     </div>
   </div>
