@@ -1,54 +1,63 @@
 {% extends 'panel/base.html' %}
-{% block title %}Места{% endblock %}
+{% load static %}
+{% block title %}Карта рынка{% endblock %}
 {% block content %}
 <div class="page-head">
   <h1>Карта рынка</h1>
   <div class="actions">
-    <a class="btn" href="{% url 'panel:spots_table' %}">Список мест и поиск</a>
-    <a class="btn primary" href="{% url 'panel:spots_manage' %}">+ Добавить корпус или места</a>
+    <a class="btn" href="{% url 'panel:spots_table' %}">Список мест</a>
+    <a class="btn" href="{% url 'panel:spots_manage' %}">+ Создать места</a>
+    {% if can_edit %}<button type="button" class="btn" id="map-edit-toggle">Редактировать</button>{% endif %}
   </div>
 </div>
 
-<div class="map-legend" style="margin-bottom:16px">
+<div class="map-toolbar">
+  <input type="text" id="map-search" placeholder="Номер места, например А-15">
+  <button type="button" class="btn" id="map-search-btn">Найти</button>
+  <span class="spacer"></span>
+  <span class="muted" id="map-counts"></span>
+  <span class="muted" id="map-save-status"></span>
+  <button type="button" class="btn small" id="map-zoom-out" aria-label="Отдалить">−</button>
+  <button type="button" class="btn small" id="map-zoom-in" aria-label="Приблизить">+</button>
+  <button type="button" class="btn small" id="map-fit">Весь рынок</button>
+</div>
+
+<div class="map-toolbar" id="map-edit-tools" hidden>
+  <select id="map-unplaced"><option value="">— выберите место —</option></select>
+  <button type="button" class="btn primary" id="map-place-btn">Разместить на карте</button>
+  <button type="button" class="btn danger" id="map-delete-btn" hidden>Убрать с карты</button>
+  <span class="muted">Перетащите место, чтобы передвинуть; бросьте на другое — чтобы поменять местами;
+    потяните за угол — чтобы изменить размер.</span>
+</div>
+
+<div class="map-wrap">
+  <div id="map-canvas"></div>
+  <div id="map-tooltip" class="map-tooltip" hidden></div>
+</div>
+
+<div class="map-legend">
   <span><i class="cell-demo free"></i> Свободно</span>
   <span><i class="cell-demo occupied"></i> Занято</span>
+  <span><i class="cell-demo debt"></i> Занято, есть долг</span>
   <span><i class="cell-demo repair"></i> На ремонте</span>
-  <span class="muted">— наведите на квадрат, чтобы увидеть место и арендатора</span>
+  <span class="muted">Колесо мыши — масштаб, перетаскивание фона — перемещение по карте.
+    Клик по месту открывает арендатора.</span>
 </div>
 
-{% if map_buildings %}
-<div class="market-map">
-  {% for mb in map_buildings %}
-  <div class="map-building">
-    <div class="map-building-head">
-      <b>{{ mb.building.name }}</b>
-      <span>занято {{ mb.occupied }} из {{ mb.total }}</span>
-    </div>
-    <div class="map-grid">
-      {% for row in mb.spots %}
-        {% if row.link %}
-          <a class="map-cell occupied" href="{% url 'panel:tenant_detail' row.link.tenant_id %}"
-             aria-label="{{ row.spot.code }}"
-             title="{{ row.spot.code }} · {{ row.link.tenant.full_name }} · {{ row.link.monthly_amount|money }} сом/мес"></a>
-        {% elif row.spot.status == 'repair' %}
-          <a class="map-cell repair" href="{% url 'panel:spot_history' row.spot.pk %}"
-             aria-label="{{ row.spot.code }}" title="{{ row.spot.code }} · на ремонте"></a>
-        {% else %}
-          <a class="map-cell free" href="{% url 'panel:spot_history' row.spot.pk %}"
-             aria-label="{{ row.spot.code }}" title="{{ row.spot.code }} · свободно"></a>
-        {% endif %}
-      {% empty %}<span class="muted" style="padding:4px 2px">В корпусе пока нет мест —
-        <a href="{% url 'panel:spots_manage' %}">добавить</a></span>{% endfor %}
-    </div>
-  </div>
-  {% endfor %}
-</div>
-{% else %}
-<div class="panel empty-state">
-  <p><b>Карта пока пуста.</b></p>
-  <p class="muted">Создайте корпуса и места — карта построится автоматически:
-  каждый корпус станет сектором, каждое место — квадратом.</p>
-  <a class="btn primary" href="{% url 'panel:spots_manage' %}">+ Добавить корпус или места</a>
-</div>
-{% endif %}
+<script type="application/json" id="map-config">{
+  "csrf": "{{ csrf_token }}",
+  "urls": {
+    "plan": "{% url 'panel:map_plan' %}",
+    "create": "{% url 'panel:map_position_create' %}",
+    "update": "{% url 'panel:map_position_update' 0 %}",
+    "delete": "{% url 'panel:map_position_delete' 0 %}",
+    "transfer": "{% url 'panel:map_position_transfer' %}",
+    "tenant": "{% url 'panel:tenant_detail' 0 %}",
+    "spotHistory": "{% url 'panel:spot_history' 0 %}"
+  }
+}</script>
+{% endblock %}
+{% block scripts %}
+<script src="{% static 'js/konva.min.js' %}"></script>
+<script src="{% static 'js/market-map.js' %}"></script>
 {% endblock %}

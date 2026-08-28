@@ -2,7 +2,7 @@
 from django.urls import path
 
 from apps.billing import panel_views as billing
-from apps.catalog import panel_views as catalog
+from apps.catalog import map_views, panel_views as catalog
 from apps.core import panel_views as core
 from apps.notifications import panel_views as notifications
 from apps.payments import panel_views as payments
@@ -56,8 +56,13 @@ urlpatterns = [
     path('charges/run/', billing.billing_run, name='billing_run'),
     path('charges/<int:pk>/cancel/', billing.charge_cancel, name='charge_cancel'),
 
-    # Места
-    path('spots/', catalog.spots_map, name='spots'),
+    # Места: интерактивная карта рынка
+    path('spots/', map_views.map_page, name='spots'),
+    path('map/api/plan/', map_views.map_plan_json, name='map_plan'),
+    path('map/api/positions/', map_views.position_create, name='map_position_create'),
+    path('map/api/positions/<int:pk>/', map_views.position_update, name='map_position_update'),
+    path('map/api/positions/<int:pk>/delete', map_views.position_delete, name='map_position_delete'),
+    path('map/api/positions/transfer', map_views.position_transfer, name='map_position_transfer'),
     path('spots/list/', catalog.spots_table, name='spots_table'),
     path('spots/manage/', catalog.spots_manage, name='spots_manage'),
     path('spots/create/', catalog.spot_create, name='spot_create'),

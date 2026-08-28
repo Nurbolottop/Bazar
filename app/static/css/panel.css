@@ -350,43 +350,33 @@ label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 5px
   .receipt-thumb { width: 54px; height: 54px; }
 }
 
-/* ================= Карта рынка ================= */
+/* ================= Интерактивная карта рынка (Konva) ================= */
+.map-toolbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center;
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 10px 14px; margin-bottom: 12px; box-shadow: var(--shadow); }
+.map-toolbar .spacer { flex: 1; }
+.map-toolbar input[type=text] { width: 240px; }
+.map-wrap { position: relative; margin-bottom: 12px; }
+#map-canvas { height: calc(100vh - 320px); min-height: 440px; background: #eef2f0;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: var(--shadow); overflow: hidden; cursor: grab; }
+#map-canvas:active { cursor: grabbing; }
+.map-tooltip { position: absolute; z-index: 5; pointer-events: none;
+  background: #10281f; color: #eaf3ee; font-size: 12.5px; line-height: 1.5;
+  padding: 8px 11px; border-radius: 8px; box-shadow: 0 4px 14px rgba(0,0,0,.3);
+  max-width: 260px; }
 .map-legend { display: flex; gap: 16px; align-items: center; font-size: 13px;
   color: var(--muted); flex-wrap: wrap; }
 .map-legend span { display: inline-flex; align-items: center; gap: 6px; }
-.cell-demo { width: 16px; height: 16px; border-radius: 4px; display: inline-block; }
-.cell-demo.free { background: #fff; border: 1px solid #8cc3ab; }
+.cell-demo { width: 15px; height: 15px; border-radius: 4px; display: inline-block; }
+.cell-demo.free { background: #fff; border: 1.5px solid #5ea98c; }
 .cell-demo.occupied { background: var(--accent); }
+.cell-demo.debt { background: var(--danger); }
 .cell-demo.repair { background: #cfd6d2; }
-
-.market-map { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 24px; }
-.map-building { background: var(--card); border: 1px solid var(--border);
-  border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden;
-  flex: 1 1 340px; max-width: 100%; }
-.map-building-head { display: flex; justify-content: space-between; align-items: center;
-  gap: 10px; padding: 11px 16px; background: #143528; color: #fff; font-size: 14px; }
-.map-building-head span { color: #9dc3b2; font-size: 12.5px; white-space: nowrap; }
-/* Каждому корпусу — свой цвет шапки, как секторам на схеме рынка */
-.map-building:nth-child(6n+2) .map-building-head { background: #1d4fa1; }
-.map-building:nth-child(6n+2) .map-building-head span { color: #aecbf5; }
-.map-building:nth-child(6n+3) .map-building-head { background: #8a520b; }
-.map-building:nth-child(6n+3) .map-building-head span { color: #ecd0a8; }
-.map-building:nth-child(6n+4) .map-building-head { background: #5b3d8f; }
-.map-building:nth-child(6n+4) .map-building-head span { color: #cfc0ea; }
-.map-building:nth-child(6n+5) .map-building-head { background: #7a1f3d; }
-.map-building:nth-child(6n+5) .map-building-head span { color: #ecb6c9; }
-.map-building:nth-child(6n) .map-building-head { background: #3e5b1e; }
-.map-building:nth-child(6n) .map-building-head span { color: #c8dfa8; }
-.map-grid { display: flex; flex-wrap: wrap; gap: 3px; padding: 14px; }
-.map-cell { width: 22px; height: 22px; border-radius: 3px; display: inline-block;
-  border: 1px solid rgba(16, 32, 26, .18);
-  transition: transform .08s ease, box-shadow .08s ease; }
-.map-cell:hover { text-decoration: none; transform: scale(1.35);
-  box-shadow: 0 3px 8px rgba(16, 32, 26, .3); position: relative; z-index: 2; }
-.map-cell.free { background: #fff; border-color: #8cc3ab; }
-.map-cell.occupied { background: var(--accent); border-color: var(--accent-dark); }
-.map-cell.repair { background: #cfd6d2; border-color: #b4bdb8;
-  background-image: repeating-linear-gradient(45deg, transparent 0 3px, rgba(0,0,0,.08) 3px 6px); }
+@media (max-width: 700px) {
+  #map-canvas { height: calc(100vh - 300px); min-height: 360px; }
+  .map-toolbar input[type=text] { width: 100%; }
+}
 
 /* Сворачиваемые блоки под картой */
 .collapse { margin-bottom: 16px; }
@@ -404,14 +394,8 @@ label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 5px
 .collapse > .toolbar { border-radius: 0; }
 
 @media (max-width: 700px) {
-  .map-building { flex-basis: 100%; }
-  .map-cell { width: 26px; height: 26px; }
-  .map-grid { gap: 4px; padding: 12px; }
 }
 
-/* Сектор карты не растягивается на всю ширину — пакуется по содержимому */
-.map-building { flex: 0 1 auto; min-width: 280px; }
-.map-grid { max-width: 560px; }
 .empty-state { padding: 34px; text-align: center; }
 .empty-state p { margin-bottom: 8px; }
 .empty-state .btn { margin-top: 10px; }

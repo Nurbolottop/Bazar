@@ -11,34 +11,6 @@ from .models import Building, Spot
 
 
 @admin_required
-def spots_map(request):
-    """Карта рынка: корпуса-сектора с квадратами мест. Главная страница раздела."""
-    from django.db.models import Prefetch
-    from apps.tenants.models import TenantSpot
-
-    map_buildings = []
-    buildings_qs = Building.objects.filter(is_active=True).prefetch_related(
-        Prefetch('spots', queryset=Spot.objects.order_by('code').prefetch_related(
-            Prefetch('tenant_spots',
-                     queryset=TenantSpot.objects.filter(is_active=True).select_related('tenant'),
-                     to_attr='active_links'))),
-    ).order_by('code')
-    for b in buildings_qs:
-        spots = []
-        occupied = 0
-        for spot in b.spots.all():
-            link = spot.active_links[0] if spot.active_links else None
-            if spot.status == Spot.Status.OCCUPIED:
-                occupied += 1
-            spots.append({'spot': spot, 'link': link})
-        map_buildings.append({
-            'building': b, 'spots': spots,
-            'total': len(spots), 'occupied': occupied,
-        })
-    return render(request, 'panel/spots_map.html', {'map_buildings': map_buildings})
-
-
-@admin_required
 def spots_table(request):
     """Список мест с поиском и фильтрами по корпусу и состоянию."""
     qs = Spot.objects.select_related('building').prefetch_related('tenant_spots__tenant')
