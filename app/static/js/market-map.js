@@ -360,13 +360,14 @@
   }
 
   function renderProps() {
-    // Левая панель всегда одна и та же по ширине (карта не прыгает):
-    // просмотр — список мест, редактор — инструменты. Никогда вместе.
-    el.viewList.hidden = editMode;
+    // Просмотр — список; редактор с выбранным объектом — его свойства;
+    // редактор без выбора — «Не размещены» + тот же список разделов и мест
     el.editPanel.hidden = !editMode;
-    if (!editMode) { renderViewList(); return; }
+    el.props.classList.toggle('is-editing', editMode);
+    if (!editMode) { el.viewList.hidden = false; renderViewList(); return; }
     if (selectedZone) {
       const z = selectedZone.getAttr('zmeta');
+      el.viewList.hidden = true;
       el.propsEmpty.hidden = true;
       el.propsBody.hidden = true;
       el.unplacedBlock.hidden = true;
@@ -380,10 +381,13 @@
     if (!selected) {
       el.propsEmpty.hidden = false;
       el.propsBody.hidden = true;
-      el.unplacedBlock.hidden = !editMode;   // размещение мест — только в редакторе
-      if (editMode) renderUnplaced();
+      el.unplacedBlock.hidden = false;
+      renderUnplaced();
+      el.viewList.hidden = false;            // общий список — под «Не размещены»
+      renderViewList();
       return;
     }
+    el.viewList.hidden = true;
     el.unplacedBlock.hidden = true;
     el.propsEmpty.hidden = true;
     el.propsBody.hidden = false;
@@ -570,6 +574,16 @@
     return group;
   }
 
+  function flashZone(group) {
+    const rect = group.findOne('.zbody');
+    let flashes = 0;
+    const timer = setInterval(function () {
+      const on = flashes % 2 === 0;
+      rect.stroke(on ? HIGHLIGHT : ZONE_STROKE).strokeWidth(on ? 4 : 2);
+      if (++flashes > 5) { clearInterval(timer); rect.stroke(ZONE_STROKE).strokeWidth(2); }
+    }, 200);
+  }
+
   function renderZones(zones) {
     zoneNodes.forEach(n => n.destroy());
     zoneNodes.clear();
@@ -748,6 +762,20 @@
       const head = document.createElement('div');
       head.className = 'map-list-title';
       head.textContent = name;
+      let zoneNode = null;
+      zoneNodes.forEach(function (zn) {
+        if (!zoneNode && zn.getAttr('zmeta').name === name) zoneNode = zn;
+      });
+      if (zoneNode) {
+        head.classList.add('is-link');
+        head.title = 'Показать раздел на карте';
+        head.addEventListener('click', function () {
+          const z = zoneNode.getAttr('zmeta');
+          centerOn(z, stage.scaleX());
+          if (editMode) selectZone(zoneNode);
+          else flashZone(zoneNode);
+        });
+      }
       el.spotList.appendChild(head);
       if (!items.length) {
         const none = document.createElement('div');

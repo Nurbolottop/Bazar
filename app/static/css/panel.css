@@ -702,3 +702,10 @@ label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 5px
 /* Панель раздела на карте */
 .map-zone-field label { margin-bottom: 4px; }
 .map-zone-field input { width: 100%; }
+
+/* В редакторе общий список идёт под блоком «Не размещены» */
+.map-props.is-editing #map-view-list { order: 2; border-top: 1px solid var(--border);
+  padding-top: 10px; margin-top: 4px; }
+.map-props.is-editing #map-edit-panel { order: 1; }
+.map-list-title.is-link { cursor: pointer; }
+.map-list-title.is-link:hover { color: var(--accent); }
