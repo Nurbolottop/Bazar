@@ -766,14 +766,26 @@
       zoneNodes.forEach(function (zn) {
         if (!zoneNode && zn.getAttr('zmeta').name === name) zoneNode = zn;
       });
+      head.classList.add('is-link');
       if (zoneNode) {
-        head.classList.add('is-link');
         head.title = 'Показать раздел на карте';
         head.addEventListener('click', function () {
           const z = zoneNode.getAttr('zmeta');
           centerOn(z, stage.scaleX());
           if (editMode) selectZone(zoneNode);
           else flashZone(zoneNode);
+        });
+      } else {
+        head.title = 'У раздела пока нет контура на карте';
+        head.addEventListener('click', function () {
+          if (editMode) {
+            // сразу к размещению: модалка создания контура с этим названием
+            el.sectionName.value = name;
+            openModal(el.sectionModal);
+            setTimeout(() => el.sectionName.focus(), 40);
+          } else {
+            setStatus('У раздела «' + name + '» пока нет контура — добавьте его в режиме редактирования', true);
+          }
         });
       }
       el.spotList.appendChild(head);
@@ -935,6 +947,7 @@
     select(null);
     renderZones(data.zones || []);
     renderPositions(data.positions);
+    renderProps();   // список строится, когда контуры и места уже на сцене
     if (editMode) renderUnplaced();
   }
 
