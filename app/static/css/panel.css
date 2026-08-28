@@ -669,3 +669,6 @@ label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 5px
 .mcard input, .mcard select { width: 100%; }
 .mcard .btn { margin-top: 4px; }
 .mrow { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+/* Атрибут hidden всегда побеждает display:flex/grid у компонентов */
+[hidden] { display: none !important; }

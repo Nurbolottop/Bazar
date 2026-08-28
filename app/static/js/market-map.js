@@ -323,9 +323,10 @@
   }
 
   function renderProps() {
-    // Панель видна всегда: просмотр — только информация,
-    // редактор — информация + инструменты изменения
-    el.props.hidden = false;
+    // Панель существует только в режиме редактирования: в просмотре она
+    // полностью убрана из layout (hidden -> display:none), карта шире
+    el.props.hidden = !editMode;
+    if (!editMode) return;
     if (!selected) {
       el.propsEmpty.hidden = false;
       el.propsBody.hidden = true;
