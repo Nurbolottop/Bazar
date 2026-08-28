@@ -512,7 +512,8 @@
       sections.sort((a, b) => a.name.localeCompare(b.name, 'ru'));
       closeModal(el.sectionModal);
       el.sectionName.value = '';
-      setStatus('Раздел «' + section.name + '» создан');
+      renderProps();   // обновить панель (в просмотре — список с новым разделом)
+      setStatus('Раздел «' + section.name + '» создан — теперь укажите его при создании места');
     } catch (e) {}
   }
 
@@ -542,45 +543,60 @@
   function renderViewList() {
     const query = (el.listSearch.value || '').trim().toLowerCase();
     el.spotList.innerHTML = '';
-    const groups = [];
-    nodes.forEach(g => groups.push(g));
-    groups.sort(function (a, b) {
-      const ma = a.getAttr('meta'), mb = b.getAttr('meta');
-      return (ma.building || '').localeCompare(mb.building || '', 'ru') ||
-             (ma.code || '').localeCompare(mb.code || '', 'ru');
-    });
-    let shown = 0;
-    let currentSection = null;
-    groups.forEach(function (group) {
+
+    // Размещённые места по разделам
+    const bySection = new Map();
+    nodes.forEach(function (group) {
       const meta = group.getAttr('meta');
       if (!meta.code) return;
       if (query && !meta.code.toLowerCase().includes(query) &&
           !(meta.tenant || '').toLowerCase().includes(query)) return;
-      shown++;
-      // Заголовок раздела рынка (группировка по Building)
-      const section = meta.building || 'Без раздела';
-      if (section !== currentSection) {
-        currentSection = section;
-        const head = document.createElement('div');
-        head.className = 'map-list-title';
-        head.textContent = section;
-        el.spotList.appendChild(head);
-      }
-      const item = document.createElement('div');
-      item.className = 'map-item map-item--placed' +
-        (selected === group ? ' is-active' : '');
-      item.innerHTML = '<b>' + meta.code + '</b><span class="map-item-sub">' +
-        (meta.tenant || 'свободно') + '</span>';
-      item.addEventListener('click', function () {
-        centerOn(meta, 1);
-        select(group);
-        flashNode(group);
-      });
-      el.spotList.appendChild(item);
+      const key = meta.building || 'Без раздела';
+      if (!bySection.has(key)) bySection.set(key, []);
+      bySection.get(key).push(group);
     });
-    if (!shown) {
+
+    // Показываем ВСЕ разделы рынка — включая пустые (иначе новый раздел «не виден»)
+    const names = sections.map(s => s.name);
+    bySection.forEach((v, k) => { if (!names.includes(k)) names.push(k); });
+    names.sort((a, b) => a.localeCompare(b, 'ru'));
+
+    let shownAny = false;
+    names.forEach(function (name) {
+      const items = bySection.get(name) || [];
+      if (query && !items.length) return;   // при поиске пустые разделы не мешают
+      shownAny = true;
+      const head = document.createElement('div');
+      head.className = 'map-list-title';
+      head.textContent = name;
+      el.spotList.appendChild(head);
+      if (!items.length) {
+        const none = document.createElement('div');
+        none.className = 'map-item-none';
+        none.textContent = 'мест на карте пока нет';
+        el.spotList.appendChild(none);
+        return;
+      }
+      items.sort((a, b) => (a.getAttr('meta').code || '')
+        .localeCompare(b.getAttr('meta').code || '', 'ru'));
+      items.forEach(function (group) {
+        const meta = group.getAttr('meta');
+        const item = document.createElement('div');
+        item.className = 'map-item map-item--placed' +
+          (selected === group ? ' is-active' : '');
+        item.innerHTML = '<b>' + meta.code + '</b><span class="map-item-sub">' +
+          (meta.tenant || 'свободно') + '</span>';
+        item.addEventListener('click', function () {
+          centerOn(meta, 1);
+          select(group);
+          flashNode(group);
+        });
+        el.spotList.appendChild(item);
+      });
+    });
+    if (!shownAny) {
       el.spotList.innerHTML = '<div class="map-item-none">' +
-        (nodes.size ? 'Ничего не найдено' : 'На карте пока нет мест') + '</div>';
+        (query ? 'Ничего не найдено' : 'Разделов пока нет') + '</div>';
     }
   }
 
