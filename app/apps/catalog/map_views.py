@@ -16,7 +16,7 @@ from django.views.decorators.http import require_http_methods, require_POST
 from apps.core.panel import admin_required, client_ip
 from apps.core.services import audit
 
-from .models import MapPosition, MarketPlan, Spot
+from .models import Building, MapPosition, MarketPlan, Spot
 
 MIN_SIZE = 16
 MAX_SIZE = 800
@@ -78,6 +78,10 @@ def map_plan_json(request):
             'width': plan.width, 'height': plan.height,
             'background': plan.background.url if plan.background else None,
         },
+        'sections': [
+            {'id': b.pk, 'name': b.name}
+            for b in Building.objects.filter(is_active=True).order_by('name')
+        ],
         'positions': [_position_payload(p, debtors) for p in positions],
         'unplaced': [
             {'id': s.pk, 'code': s.code, 'building': s.building.name,
@@ -232,3 +236,54 @@ def position_delete(request, pk: int):
           ip=client_ip(request))
     position.delete()
     return JsonResponse({'deleted': pk, 'spot_code': code})
+
+
+@admin_required
+@require_POST
+def section_create(request):
+    """POST /map/api/sections/ — новый раздел рынка (модель Building).
+
+    По ТЗ «раздел» и «корпус» — одна сущность: Рынок → Корпус → Место.
+    Код генерируется из названия автоматически.
+    """
+    data = _json_body(request)
+    name = (data.get('name') or '').strip()
+    if not name:
+        return JsonResponse({'error': 'Укажите название раздела.'}, status=400)
+    if Building.objects.filter(name__iexact=name).exists():
+        return JsonResponse({'error': f'Раздел «{name}» уже существует.'}, status=409)
+    code = name[:20]
+    suffix = 2
+    while Building.objects.filter(code=code).exists():
+        code = f'{name[:16]}-{suffix}'
+        suffix += 1
+    building = Building.objects.create(name=name, code=code)
+    audit(action='building_create', model_name='Building', object_id=building.pk,
+          actor=request.user, new_value={'name': name, 'code': code},
+          ip=client_ip(request))
+    return JsonResponse({'id': building.pk, 'name': building.name}, status=201)
+
+
+@admin_required
+@require_POST
+def map_spot_create(request):
+    """POST /map/api/spots/ — новое торговое место: номер + раздел.
+
+    Создаётся обычный Spot (бизнес-сущность); на карту размещается затем
+    перетаскиванием из «Не размещены» — MapPosition здесь не создаётся.
+    """
+    data = _json_body(request)
+    code = (data.get('code') or '').strip()
+    if not code:
+        return JsonResponse({'error': 'Укажите номер места.'}, status=400)
+    building = Building.objects.filter(pk=data.get('section_id')).first()
+    if building is None:
+        return JsonResponse({'error': 'Выберите раздел рынка.'}, status=400)
+    if Spot.objects.filter(code=code).exists():
+        return JsonResponse({'error': f'Место {code} уже существует.'}, status=409)
+    spot = Spot.objects.create(building=building, code=code)
+    audit(action='spot_create', model_name='Spot', object_id=spot.pk,
+          actor=request.user, new_value={'code': code, 'building': building.name},
+          ip=client_ip(request))
+    return JsonResponse({'id': spot.pk, 'code': spot.code,
+                         'building': building.name, 'status': spot.status}, status=201)

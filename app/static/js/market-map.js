@@ -31,6 +31,15 @@
     listSearch: byId('map-list-search'),
     spotList: byId('map-spot-list'),
     editPanel: byId('map-edit-panel'),
+    addSectionBtn: byId('map-add-section'),
+    addSpotBtn: byId('map-add-spot'),
+    sectionModal: byId('map-section-modal'),
+    sectionName: byId('map-section-name'),
+    sectionSave: byId('map-section-save'),
+    spotModal: byId('map-spot-modal'),
+    spotCode: byId('map-spot-code'),
+    spotSection: byId('map-spot-section'),
+    spotSave: byId('map-spot-save'),
     propsEmpty: byId('map-props-empty'),
     propsBody: byId('map-props-body'),
     propsSize: byId('map-props-size'),
@@ -64,6 +73,7 @@
   let swapTarget = null;          // подсвеченная цель при перетаскивании
   let pendingSwap = null;         // {sourceGroup, targetGroup}
   let unplaced = [];
+  let sections = [];
   const nodes = new Map();        // position.id -> Konva.Group
 
   // ================================================================ сеть
@@ -302,7 +312,7 @@
   // ================================================================ tooltip
   function showTooltip(p) {
     let html = '<b>Место ' + (p.code || '—') + '</b>';
-    if (p.building) html += '<br>Корпус: ' + p.building;
+    if (p.building) html += '<br>Раздел: ' + p.building;
     if (p.tenant) html += '<br>Арендатор: ' + p.tenant;
     html += '<br>' + statusText(p);
     el.tooltip.innerHTML = html;
@@ -348,7 +358,7 @@
     el.propsCode.textContent = 'Место ' + (meta.code || '—');
     let rows = '';
     rows += propRow('Статус', statusText(meta));
-    if (meta.building) rows += propRow('Корпус', meta.building);
+    if (meta.building) rows += propRow('Раздел', meta.building);
     if (meta.tenant) rows += propRow('Арендатор', meta.tenant);
     el.propsInfo.innerHTML = rows;
     el.propW.value = Math.round(meta.width);
@@ -483,21 +493,79 @@
     }
   }
 
+
+  // ================================================================ создание раздела и места
+  function openModal(modal) { modal.hidden = false; }
+  function closeModal(modal) { modal.hidden = true; }
+  function bindModal(modal) {
+    modal.addEventListener('click', function (e) {
+      if (e.target === modal || e.target.closest('[data-close]')) closeModal(modal);
+    });
+  }
+
+  async function createSection() {
+    const name = el.sectionName.value.trim();
+    if (!name) { el.sectionName.focus(); return; }
+    try {
+      const section = await api(cfg.urls.sectionCreate, 'POST', { name: name });
+      sections.push(section);
+      sections.sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+      closeModal(el.sectionModal);
+      el.sectionName.value = '';
+      setStatus('Раздел «' + section.name + '» создан');
+    } catch (e) {}
+  }
+
+  function fillSectionSelect() {
+    el.spotSection.innerHTML = sections.map(
+      s => '<option value="' + s.id + '">' + s.name + '</option>').join('');
+  }
+
+  async function createSpot() {
+    const code = el.spotCode.value.trim();
+    const sectionId = parseInt(el.spotSection.value, 10);
+    if (!code) { el.spotCode.focus(); return; }
+    if (!sectionId) { setStatus('Сначала создайте раздел рынка', true); return; }
+    try {
+      const spot = await api(cfg.urls.spotCreate, 'POST',
+        { code: code, section_id: sectionId });
+      unplaced.push(spot);
+      unplaced.sort((a, b) => a.code.localeCompare(b.code, 'ru'));
+      closeModal(el.spotModal);
+      el.spotCode.value = '';
+      renderProps();   // обновит блок «Не размещены»
+      setStatus('Место ' + spot.code + ' создано — перетащите его на карту');
+    } catch (e) {}
+  }
+
   // ================================================================ список мест (режим просмотра)
   function renderViewList() {
     const query = (el.listSearch.value || '').trim().toLowerCase();
     el.spotList.innerHTML = '';
     const groups = [];
     nodes.forEach(g => groups.push(g));
-    groups.sort((a, b) => (a.getAttr('meta').code || '')
-      .localeCompare(b.getAttr('meta').code || '', 'ru'));
+    groups.sort(function (a, b) {
+      const ma = a.getAttr('meta'), mb = b.getAttr('meta');
+      return (ma.building || '').localeCompare(mb.building || '', 'ru') ||
+             (ma.code || '').localeCompare(mb.code || '', 'ru');
+    });
     let shown = 0;
+    let currentSection = null;
     groups.forEach(function (group) {
       const meta = group.getAttr('meta');
       if (!meta.code) return;
       if (query && !meta.code.toLowerCase().includes(query) &&
           !(meta.tenant || '').toLowerCase().includes(query)) return;
       shown++;
+      // Заголовок раздела рынка (группировка по Building)
+      const section = meta.building || 'Без раздела';
+      if (section !== currentSection) {
+        currentSection = section;
+        const head = document.createElement('div');
+        head.className = 'map-list-title';
+        head.textContent = section;
+        el.spotList.appendChild(head);
+      }
       const item = document.createElement('div');
       item.className = 'map-item map-item--placed' +
         (selected === group ? ' is-active' : '');
@@ -599,6 +667,8 @@
     // Изменения сохраняются сразу через API; «Сохранить» завершает режим.
     el.editToggle.textContent = on ? 'Сохранить' : 'Редактировать';
     el.editToggle.classList.toggle('primary', on);
+    el.addSectionBtn.hidden = !on;
+    el.addSpotBtn.hidden = !on;
     updateEmptyHint();
     setTimeout(resizeStage, 30);
   }
@@ -634,6 +704,7 @@
     const data = await (await fetch(cfg.urls.plan)).json();
     plan = data.plan;
     unplaced = data.unplaced;
+    sections = data.sections || [];
     if (!stage) { buildStage(); fitAll(); }
     renderPositions(data.positions);
     if (editMode) renderUnplaced();
@@ -653,6 +724,23 @@
   });
   if (el.editToggle) {
     el.editToggle.addEventListener('click', () => setEditMode(!editMode));
+    el.addSectionBtn.addEventListener('click', function () {
+      openModal(el.sectionModal);
+      setTimeout(() => el.sectionName.focus(), 40);
+    });
+    el.addSpotBtn.addEventListener('click', function () {
+      fillSectionSelect();
+      openModal(el.spotModal);
+      setTimeout(() => el.spotCode.focus(), 40);
+    });
+    el.sectionSave.addEventListener('click', createSection);
+    el.spotSave.addEventListener('click', createSpot);
+    el.sectionName.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); createSection(); } });
+    el.spotCode.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); createSpot(); } });
+    bindModal(el.sectionModal);
+    bindModal(el.spotModal);
     el.propsRemove.addEventListener('click', removeSelected);
     el.propW.addEventListener('change', applySizeFromProps);
     el.propH.addEventListener('change', applySizeFromProps);
@@ -661,6 +749,8 @@
     bindDrop();
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape') {
+      if (el.sectionModal && !el.sectionModal.hidden) { closeModal(el.sectionModal); return; }
+      if (el.spotModal && !el.spotModal.hidden) { closeModal(el.spotModal); return; }
         if (!el.confirmBox.hidden) { closeSwap(true); return; }
         if (editMode) select(null);
       }

@@ -164,6 +164,40 @@ class MapApiTests(TestCase):
         self.assertTrue(position['has_debt'])
         self.assertEqual(position['tenant'], tenant.full_name)
 
+    def test_section_create(self):
+        """Раздел рынка = Building: создаётся по названию, код генерируется."""
+        from apps.catalog.models import Building
+        response = self.client_web.post(
+            '/map/api/sections/', json.dumps({'name': 'Одежда'}),
+            content_type='application/json')
+        self.assertEqual(response.status_code, 201)
+        self.assertTrue(Building.objects.filter(name='Одежда').exists())
+        # дубль по названию отклоняется
+        response = self.client_web.post(
+            '/map/api/sections/', json.dumps({'name': 'одежда'}),
+            content_type='application/json')
+        self.assertEqual(response.status_code, 409)
+
+    def test_map_spot_create_requires_section(self):
+        from apps.catalog.models import Building
+        section = Building.objects.create(name='Обувь', code='ОБ')
+        response = self.client_web.post(
+            '/map/api/spots/', json.dumps({'code': '201', 'section_id': section.pk}),
+            content_type='application/json')
+        self.assertEqual(response.status_code, 201)
+        spot = Spot.objects.get(code='201')
+        self.assertEqual(spot.building, section)
+        # без раздела — ошибка
+        response = self.client_web.post(
+            '/map/api/spots/', json.dumps({'code': '202'}),
+            content_type='application/json')
+        self.assertEqual(response.status_code, 400)
+        # дубль номера — конфликт
+        response = self.client_web.post(
+            '/map/api/spots/', json.dumps({'code': '201', 'section_id': section.pk}),
+            content_type='application/json')
+        self.assertEqual(response.status_code, 409)
+
     def test_requires_login(self):
         anonymous = Client()
         self.assertEqual(anonymous.get('/map/api/plan/').status_code, 302)

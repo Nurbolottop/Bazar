@@ -18,7 +18,11 @@
     </div>
     <div class="map-topbar-right">
       <span class="muted" id="map-save-status"></span>
-      {% if can_edit %}<button type="button" class="btn" id="map-edit-toggle">Редактировать</button>{% endif %}
+      {% if can_edit %}
+      <button type="button" class="btn" id="map-add-section" hidden>+ Раздел</button>
+      <button type="button" class="btn" id="map-add-spot" hidden>+ Место</button>
+      <button type="button" class="btn" id="map-edit-toggle">Редактировать</button>
+      {% endif %}
       <a class="btn" id="map-list-link" href="{% url 'panel:spots_table' %}">Список</a>
     </div>
   </div>
@@ -79,6 +83,40 @@
   </div>
 </div>
 
+<div id="map-section-modal" class="map-modal" hidden>
+  <div class="map-modal-card">
+    <div class="map-modal-head">
+      <b>Новый раздел рынка</b>
+      <button type="button" class="map-modal-close" data-close aria-label="Закрыть">✕</button>
+    </div>
+    <label>Название раздела</label>
+    <input type="text" id="map-section-name" placeholder="Например: Одежда" autocomplete="off">
+    <div class="map-modal-actions">
+      <button type="button" class="btn" data-close>Отмена</button>
+      <button type="button" class="btn primary" id="map-section-save">Создать раздел</button>
+    </div>
+  </div>
+</div>
+
+<div id="map-spot-modal" class="map-modal" hidden>
+  <div class="map-modal-card">
+    <div class="map-modal-head">
+      <b>Новое торговое место</b>
+      <button type="button" class="map-modal-close" data-close aria-label="Закрыть">✕</button>
+    </div>
+    <label>Номер места</label>
+    <input type="text" id="map-spot-code" placeholder="Например: 125" autocomplete="off">
+    <label>Раздел рынка</label>
+    <select id="map-spot-section"></select>
+    <div class="muted">Созданное место появится в списке «Не размещены» —
+      перетащите его на карту.</div>
+    <div class="map-modal-actions">
+      <button type="button" class="btn" data-close>Отмена</button>
+      <button type="button" class="btn primary" id="map-spot-save">Создать место</button>
+    </div>
+  </div>
+</div>
+
 <script type="application/json" id="map-config">{
   "csrf": "{{ csrf_token }}",
   "canEdit": {{ can_edit|yesno:'true,false' }},
@@ -88,6 +126,8 @@
     "update": "{% url 'panel:map_position_update' 0 %}",
     "delete": "{% url 'panel:map_position_delete' 0 %}",
     "transfer": "{% url 'panel:map_position_transfer' %}",
+    "sectionCreate": "{% url 'panel:map_section_create' %}",
+    "spotCreate": "{% url 'panel:map_spot_create' %}",
     "tenant": "{% url 'panel:tenant_detail' 0 %}",
     "spotHistory": "{% url 'panel:spot_history' 0 %}"
   }
