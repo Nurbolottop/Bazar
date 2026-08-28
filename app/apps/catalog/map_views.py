@@ -144,8 +144,10 @@ def position_update(request, pk: int):
     if isinstance(geometry, JsonResponse):
         return geometry
     with transaction.atomic():
+        # of=('self',): блокируем только строку позиции — иначе Postgres
+        # отвергает FOR UPDATE по nullable-стороне outer join (spot)
         position = get_object_or_404(
-            MapPosition.objects.select_for_update().select_related(
+            MapPosition.objects.select_for_update(of=('self',)).select_related(
                 'spot', 'spot__building'), pk=pk)
         # Оптимистическая блокировка: другой администратор успел раньше — 409
         sent_version = data.get('updated_at')
