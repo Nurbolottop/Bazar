@@ -54,6 +54,20 @@
           <a class="btn small" id="map-props-open" href="#" target="_blank" rel="noopener">Открыть карточку</a>
           <button type="button" class="btn small danger" id="map-props-remove">Убрать с карты</button>
         </div>
+        <div class="map-props-body" id="map-zone-props" hidden>
+          <div class="map-props-title">Раздел</div>
+          <div class="map-zone-field">
+            <label>Название</label>
+            <input type="text" id="map-zone-name" autocomplete="off">
+          </div>
+          <div class="map-props-size">
+            <label>Ширина <input type="number" id="map-zone-w" min="100" max="4000"></label>
+            <label>Высота <input type="number" id="map-zone-h" min="100" max="4000"></label>
+          </div>
+          <button type="button" class="btn small danger" id="map-zone-remove">Убрать с карты</button>
+          <div class="muted">Контур — визуальная граница: его перемещение не двигает
+            места, а раздел и его места остаются в системе.</div>
+        </div>
       </div>
     </aside>
     <div class="map-stage" id="map-stage-wrap">
@@ -128,6 +142,9 @@
     "transfer": "{% url 'panel:map_position_transfer' %}",
     "sectionCreate": "{% url 'panel:map_section_create' %}",
     "spotCreate": "{% url 'panel:map_spot_create' %}",
+    "zoneCreate": "{% url 'panel:map_zone_create' %}",
+    "zoneUpdate": "{% url 'panel:map_zone_update' 0 %}",
+    "zoneDelete": "{% url 'panel:map_zone_delete' 0 %}",
     "tenant": "{% url 'panel:tenant_detail' 0 %}",
     "spotHistory": "{% url 'panel:spot_history' 0 %}"
   }

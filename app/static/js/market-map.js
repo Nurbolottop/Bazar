@@ -40,6 +40,11 @@
     spotCode: byId('map-spot-code'),
     spotSection: byId('map-spot-section'),
     spotSave: byId('map-spot-save'),
+    zoneProps: byId('map-zone-props'),
+    zoneName: byId('map-zone-name'),
+    zoneW: byId('map-zone-w'),
+    zoneH: byId('map-zone-h'),
+    zoneRemove: byId('map-zone-remove'),
     propsEmpty: byId('map-props-empty'),
     propsBody: byId('map-props-body'),
     propsSize: byId('map-props-size'),
@@ -66,7 +71,7 @@
   };
   const HIGHLIGHT = '#1d4fa1';
 
-  let stage, planLayer, spotsLayer, transformer;
+  let stage, planLayer, zoneLayer, spotsLayer, transformer, zoneTransformer;
   let plan = null;
   let editMode = false;
   let selected = null;
@@ -75,6 +80,9 @@
   let unplaced = [];
   let sections = [];
   const nodes = new Map();        // position.id -> Konva.Group
+  const zoneNodes = new Map();    // zone.id -> Konva.Group
+  let selectedZone = null;
+  const ZONE_STROKE = '#7d938a';
 
   // ================================================================ сеть
   function setStatus(text, isError) {
@@ -123,8 +131,10 @@
       draggable: true,
     });
     planLayer = new Konva.Layer({ listening: false });
+    zoneLayer = new Konva.Layer();      // контуры разделов — под местами
     spotsLayer = new Konva.Layer();
     stage.add(planLayer);
+    stage.add(zoneLayer);
     stage.add(spotsLayer);
 
     // Рабочая область: белый лист с точечной сеткой (только визуально, без snap)
@@ -158,6 +168,15 @@
         (newBox.width < 12 || newBox.height < 12) ? oldBox : newBox,
     });
     spotsLayer.add(transformer);
+
+    zoneTransformer = new Konva.Transformer({
+      rotateEnabled: false, flipEnabled: false, keepRatio: false,
+      anchorSize: 10, anchorCornerRadius: 3,
+      borderStroke: HIGHLIGHT, anchorStroke: HIGHLIGHT,
+      boundBoxFunc: (oldBox, newBox) =>
+        (newBox.width < 100 || newBox.height < 100) ? oldBox : newBox,
+    });
+    zoneLayer.add(zoneTransformer);
 
     stage.on('wheel', function (e) {
       e.evt.preventDefault();
@@ -332,6 +351,10 @@
   // ================================================================ выбор и панель свойств
   function select(group) {
     selected = group;
+    if (group && selectedZone) {
+      selectedZone = null;
+      zoneTransformer.nodes([]);
+    }
     transformer.nodes(group && editMode ? [group] : []);
     renderProps();
   }
@@ -342,6 +365,18 @@
     el.viewList.hidden = editMode;
     el.editPanel.hidden = !editMode;
     if (!editMode) { renderViewList(); return; }
+    if (selectedZone) {
+      const z = selectedZone.getAttr('zmeta');
+      el.propsEmpty.hidden = true;
+      el.propsBody.hidden = true;
+      el.unplacedBlock.hidden = true;
+      el.zoneProps.hidden = false;
+      el.zoneName.value = z.name;
+      el.zoneW.value = Math.round(z.width);
+      el.zoneH.value = Math.round(z.height);
+      return;
+    }
+    el.zoneProps.hidden = true;
     if (!selected) {
       el.propsEmpty.hidden = false;
       el.propsBody.hidden = true;
@@ -494,6 +529,141 @@
   }
 
 
+
+  // ================================================================ контуры разделов
+  function makeZoneNode(z) {
+    const group = new Konva.Group({ x: z.x, y: z.y, draggable: editMode,
+      listening: editMode });
+    // Только контур: fill отсутствует — внутренняя область не перехватывает
+    // клики и pan; интерактивна граница (hitStrokeWidth) и подпись
+    const rect = new Konva.Rect({
+      name: 'zbody', width: z.width, height: z.height,
+      stroke: ZONE_STROKE, strokeWidth: 2, cornerRadius: 6,
+      hitStrokeWidth: 16, fillEnabled: false,
+    });
+    const label = new Konva.Text({
+      x: 10, y: 8, text: z.name,
+      fontSize: 15, fontStyle: 'bold', fill: ZONE_STROKE,
+      fontFamily: '-apple-system, Segoe UI, Roboto, Arial, sans-serif',
+    });
+    group.add(rect); group.add(label);
+    group.setAttr('zmeta', z);
+
+    group.on('mouseenter', function () {
+      if (editMode) stage.container().style.cursor = 'move';
+    });
+    group.on('mouseleave', function () {
+      stage.container().style.cursor = 'grab';
+    });
+    group.on('click tap', function (e) {
+      e.cancelBubble = true;
+      if (editMode) selectZone(group);
+    });
+    group.on('dragend', function () { saveZoneGeometry(group); });
+    group.on('transformend', function () {
+      const width = rect.width() * group.scaleX();
+      const height = rect.height() * group.scaleY();
+      group.scale({ x: 1, y: 1 });
+      rect.size({ width: width, height: height });
+      saveZoneGeometry(group);
+    });
+    return group;
+  }
+
+  function renderZones(zones) {
+    zoneNodes.forEach(n => n.destroy());
+    zoneNodes.clear();
+    zones.forEach(function (z) {
+      const node = makeZoneNode(z);
+      zoneNodes.set(z.id, node);
+      zoneLayer.add(node);
+    });
+    zoneTransformer.moveToTop();
+  }
+
+  function refreshZoneNode(z) {
+    const old = zoneNodes.get(z.id);
+    if (old) old.destroy();
+    const node = makeZoneNode(z);
+    zoneNodes.set(z.id, node);
+    zoneLayer.add(node);
+    zoneTransformer.moveToTop();
+    return node;
+  }
+
+  function selectZone(group) {
+    if (selected) { select(null); }
+    selectedZone = group;
+    zoneTransformer.nodes(group ? [group] : []);
+    renderProps();
+  }
+
+  function zoneGeometryOf(group) {
+    const rect = group.findOne('.zbody');
+    return {
+      x: Math.round(group.x()), y: Math.round(group.y()),
+      width: Math.round(rect.width() * group.scaleX()),
+      height: Math.round(rect.height() * group.scaleY()),
+    };
+  }
+
+  async function saveZoneGeometry(group) {
+    const z = group.getAttr('zmeta');
+    const geometry = zoneGeometryOf(group);
+    try {
+      const updated = await api(urlFor(cfg.urls.zoneUpdate, z.id), 'PATCH',
+        Object.assign({ updated_at: z.updated_at }, geometry));
+      group.setAttr('zmeta', updated);
+      group.position({ x: updated.x, y: updated.y });
+      if (selectedZone === group) renderProps();
+    } catch (e) {
+      if (e.status === 409) { await load(); return; }
+      group.position({ x: z.x, y: z.y });
+      const rect = group.findOne('.zbody');
+      rect.size({ width: z.width, height: z.height });
+    }
+  }
+
+  async function saveZoneName() {
+    if (!selectedZone) return;
+    const z = selectedZone.getAttr('zmeta');
+    const name = el.zoneName.value.trim();
+    if (!name || name === z.name) return;
+    try {
+      const updated = await api(urlFor(cfg.urls.zoneUpdate, z.id), 'PATCH',
+        { updated_at: z.updated_at, name: name });
+      selectedZone.setAttr('zmeta', updated);
+      selectedZone.findOne('Text').text(updated.name);
+      const section = sections.find(s => s.id === updated.building_id);
+      if (section) section.name = updated.name;
+    } catch (e) {
+      el.zoneName.value = z.name;
+    }
+  }
+
+  function applyZoneSize() {
+    if (!selectedZone) return;
+    const width = parseInt(el.zoneW.value, 10);
+    const height = parseInt(el.zoneH.value, 10);
+    if (!width || !height || width < 100 || height < 100) return;
+    const rect = selectedZone.findOne('.zbody');
+    rect.size({ width: width, height: height });
+    saveZoneGeometry(selectedZone);
+  }
+
+  async function removeZone() {
+    if (!selectedZone) return;
+    const z = selectedZone.getAttr('zmeta');
+    if (!confirm('Убрать контур раздела «' + z.name +
+        '» с карты? Сам раздел и его места останутся в системе.')) return;
+    try {
+      await api(urlFor(cfg.urls.zoneDelete, z.id), 'DELETE');
+      selectedZone.destroy();
+      zoneNodes.delete(z.id);
+      selectZone(null);
+    } catch (e) {}
+  }
+
   // ================================================================ создание раздела и места
   function openModal(modal) { modal.hidden = false; }
   function closeModal(modal) { modal.hidden = true; }
@@ -506,14 +676,23 @@
   async function createSection() {
     const name = el.sectionName.value.trim();
     if (!name) { el.sectionName.focus(); return; }
+    // Контур появляется в центре текущей видимой области, 500×300
+    const scale = stage.scaleX();
+    const width = 500, height = 300;
+    const x = Math.round((stage.width() / 2 - stage.x()) / scale - width / 2);
+    const y = Math.round((stage.height() / 2 - stage.y()) / scale - height / 2);
     try {
-      const section = await api(cfg.urls.sectionCreate, 'POST', { name: name });
-      sections.push(section);
-      sections.sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+      const zone = await api(cfg.urls.zoneCreate, 'POST',
+        { name: name, x: x, y: y, width: width, height: height });
+      if (!sections.some(s => s.id === zone.building_id)) {
+        sections.push({ id: zone.building_id, name: zone.name });
+        sections.sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+      }
       closeModal(el.sectionModal);
       el.sectionName.value = '';
-      renderProps();   // обновить панель (в просмотре — список с новым разделом)
-      setStatus('Раздел «' + section.name + '» создан — теперь укажите его при создании места');
+      const node = refreshZoneNode(zone);
+      selectZone(node);   // сразу выделен — можно двигать и растягивать
+      setStatus('Раздел «' + zone.name + '» добавлен на карту');
     } catch (e) {}
   }
 
@@ -674,10 +853,12 @@
   // ================================================================ режимы
   function setEditMode(on) {
     editMode = on;
+    selectZone(null);
     select(null);
     closeSwap(true);
     el.tooltip.hidden = true;
     nodes.forEach(n => n.draggable(on));
+    zoneNodes.forEach(function (n) { n.draggable(on); n.listening(on); });
     document.getElementById('map-app').classList.toggle('is-editing', on);
     // Одна кнопка на одном месте: «Редактировать» ↔ «Сохранить».
     // Изменения сохраняются сразу через API; «Сохранить» завершает режим.
@@ -722,6 +903,9 @@
     unplaced = data.unplaced;
     sections = data.sections || [];
     if (!stage) { buildStage(); fitAll(); }
+    selectZone(null);
+    select(null);
+    renderZones(data.zones || []);
     renderPositions(data.positions);
     if (editMode) renderUnplaced();
   }
@@ -750,6 +934,10 @@
       setTimeout(() => el.spotCode.focus(), 40);
     });
     el.sectionSave.addEventListener('click', createSection);
+    el.zoneName.addEventListener('change', saveZoneName);
+    el.zoneW.addEventListener('change', applyZoneSize);
+    el.zoneH.addEventListener('change', applyZoneSize);
+    el.zoneRemove.addEventListener('click', removeZone);
     el.spotSave.addEventListener('click', createSpot);
     el.sectionName.addEventListener('keydown', e => {
       if (e.key === 'Enter') { e.preventDefault(); createSection(); } });
@@ -768,6 +956,7 @@
       if (el.sectionModal && !el.sectionModal.hidden) { closeModal(el.sectionModal); return; }
       if (el.spotModal && !el.spotModal.hidden) { closeModal(el.spotModal); return; }
         if (!el.confirmBox.hidden) { closeSwap(true); return; }
+        if (selectedZone) { selectZone(null); return; }
         if (editMode) select(null);
       }
       if (editMode && (e.key === 'Delete' || e.key === 'Backspace') && selected &&

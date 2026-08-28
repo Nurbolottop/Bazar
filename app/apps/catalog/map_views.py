@@ -16,7 +16,7 @@ from django.views.decorators.http import require_http_methods, require_POST
 from apps.core.panel import admin_required, client_ip
 from apps.core.services import audit
 
-from .models import Building, MapPosition, MarketPlan, Spot
+from .models import Building, MapPosition, MapZone, MarketPlan, Spot
 
 MIN_SIZE = 16
 MAX_SIZE = 800
@@ -81,6 +81,12 @@ def map_plan_json(request):
         'sections': [
             {'id': b.pk, 'name': b.name}
             for b in Building.objects.filter(is_active=True).order_by('name')
+        ],
+        'zones': [
+            {'id': z.pk, 'building_id': z.building_id, 'name': z.building.name,
+             'x': z.x, 'y': z.y, 'width': z.width, 'height': z.height,
+             'updated_at': z.updated_at.isoformat()}
+            for z in MapZone.objects.filter(plan=plan).select_related('building')
         ],
         'positions': [_position_payload(p, debtors) for p in positions],
         'unplaced': [
@@ -287,3 +293,133 @@ def map_spot_create(request):
           ip=client_ip(request))
     return JsonResponse({'id': spot.pk, 'code': spot.code,
                          'building': building.name, 'status': spot.status}, status=201)
+
+
+ZONE_MIN = 100
+
+
+def _zone_payload(zone: MapZone) -> dict:
+    return {'id': zone.pk, 'building_id': zone.building_id,
+            'name': zone.building.name,
+            'x': zone.x, 'y': zone.y,
+            'width': zone.width, 'height': zone.height,
+            'updated_at': zone.updated_at.isoformat()}
+
+
+def _validate_zone_geometry(plan: MarketPlan, data: dict) -> dict | JsonResponse:
+    try:
+        x = float(data['x'])
+        y = float(data['y'])
+        width = float(data.get('width', 500))
+        height = float(data.get('height', 300))
+    except (KeyError, TypeError, ValueError):
+        return JsonResponse({'error': 'Неверные координаты раздела.'}, status=400)
+    if width < ZONE_MIN or height < ZONE_MIN:
+        return JsonResponse(
+            {'error': f'Минимальный размер раздела — {ZONE_MIN}×{ZONE_MIN}.'}, status=400)
+    x = max(0.0, min(x, plan.width - width))
+    y = max(0.0, min(y, plan.height - height))
+    if width > plan.width or height > plan.height:
+        return JsonResponse({'error': 'Раздел больше плана.'}, status=400)
+    return {'x': x, 'y': y, 'width': width, 'height': height}
+
+
+@admin_required
+@require_POST
+def zone_create(request):
+    """POST /map/api/zones/ — контур раздела на карте.
+
+    По названию: новый раздел (Building) создаётся вместе с контуром;
+    для существующего раздела без контура — добавляется только контур.
+    """
+    data = _json_body(request)
+    plan = MarketPlan.get_default()
+    geometry = _validate_zone_geometry(plan, data)
+    if isinstance(geometry, JsonResponse):
+        return geometry
+    name = (data.get('name') or '').strip()
+    if not name:
+        return JsonResponse({'error': 'Укажите название раздела.'}, status=400)
+
+    building = Building.objects.filter(name__iexact=name).first()
+    if building is None:
+        code = name[:20]
+        suffix = 2
+        while Building.objects.filter(code=code).exists():
+            code = f'{name[:16]}-{suffix}'
+            suffix += 1
+        building = Building.objects.create(name=name, code=code)
+        audit(action='building_create', model_name='Building', object_id=building.pk,
+              actor=request.user, new_value={'name': name, 'code': code},
+              ip=client_ip(request))
+    elif MapZone.objects.filter(building=building).exists():
+        return JsonResponse(
+            {'error': f'Раздел «{building.name}» уже есть на карте.'}, status=409)
+
+    zone = MapZone.objects.create(plan=plan, building=building, **geometry)
+    audit(action='map_zone_create', model_name='MapZone', object_id=zone.pk,
+          actor=request.user, new_value={'building': building.name, **geometry},
+          ip=client_ip(request))
+    return JsonResponse(_zone_payload(zone), status=201)
+
+
+@admin_required
+@require_http_methods(['PATCH'])
+def zone_update(request, pk: int):
+    """PATCH /map/api/zones/<id>/ — перемещение/размер контура и переименование раздела."""
+    data = _json_body(request)
+    plan = MarketPlan.get_default()
+    with transaction.atomic():
+        zone = get_object_or_404(
+            MapZone.objects.select_for_update(of=('self',)).select_related('building'),
+            pk=pk)
+        sent_version = data.get('updated_at')
+        if sent_version and sent_version != zone.updated_at.isoformat():
+            return JsonResponse(
+                {'error': 'Карта изменена другим пользователем. Страница будет обновлена.'},
+                status=409)
+        old = {'x': zone.x, 'y': zone.y, 'width': zone.width, 'height': zone.height,
+               'name': zone.building.name}
+
+        if 'x' in data or 'width' in data:
+            geometry = _validate_zone_geometry(plan, {
+                'x': data.get('x', zone.x), 'y': data.get('y', zone.y),
+                'width': data.get('width', zone.width),
+                'height': data.get('height', zone.height)})
+            if isinstance(geometry, JsonResponse):
+                return geometry
+            for field, value in geometry.items():
+                setattr(zone, field, value)
+
+        new_name = (data.get('name') or '').strip()
+        if new_name and new_name != zone.building.name:
+            clash = Building.objects.filter(name__iexact=new_name)                 .exclude(pk=zone.building_id).exists()
+            if clash:
+                return JsonResponse(
+                    {'error': f'Раздел «{new_name}» уже существует.'}, status=409)
+            zone.building.name = new_name
+            zone.building.save(update_fields=['name', 'updated_at'])
+
+        zone.save()
+        audit(action='map_zone_update', model_name='MapZone', object_id=pk,
+              actor=request.user, old_value=old,
+              new_value={'x': zone.x, 'y': zone.y, 'width': zone.width,
+                         'height': zone.height, 'name': zone.building.name},
+              ip=client_ip(request))
+    return JsonResponse(_zone_payload(zone))
+
+
+@admin_required
+@require_http_methods(['DELETE'])
+def zone_delete(request, pk: int):
+    """DELETE /map/api/zones/<id>/delete — убрать контур раздела с карты.
+
+    Сам раздел (Building), его места и арендаторы остаются в системе.
+    """
+    zone = get_object_or_404(MapZone.objects.select_related('building'), pk=pk)
+    name = zone.building.name
+    audit(action='map_zone_delete', model_name='MapZone', object_id=pk,
+          actor=request.user, old_value={'building': name, 'x': zone.x, 'y': zone.y},
+          ip=client_ip(request))
+    zone.delete()
+    return JsonResponse({'deleted': pk, 'name': name})

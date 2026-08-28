@@ -83,6 +83,37 @@ class Spot(TimestampedModel):
         return f'{self.code} ({self.building.name})'
 
 
+class MapZone(TimestampedModel):
+    """Визуальный контур раздела рынка на плане.
+
+    Бизнес-раздел — это Building (Рынок → Раздел → Место); MapZone хранит
+    только его геометрию на карте. Перемещение контура не двигает места:
+    у каждого Spot собственная MapPosition, а принадлежность к разделу —
+    поле Spot.building, не геометрия.
+    """
+    plan = models.ForeignKey(
+        MarketPlan, verbose_name='План', on_delete=models.CASCADE, related_name='zones')
+    building = models.OneToOneField(
+        Building, verbose_name='Раздел рынка', on_delete=models.CASCADE,
+        related_name='map_zone')
+    x = models.FloatField('X')
+    y = models.FloatField('Y')
+    width = models.FloatField('Ширина')
+    height = models.FloatField('Высота')
+
+    class Meta:
+        verbose_name = 'Контур раздела на карте'
+        verbose_name_plural = 'Контуры разделов на карте'
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(width__gte=100) & models.Q(height__gte=100),
+                name='mapzone_min_size'),
+        ]
+
+    def __str__(self):
+        return f'Контур раздела «{self.building.name}»'
+
+
 class MapPosition(TimestampedModel):
     """Визуальная позиция торгового места на плане рынка.
 

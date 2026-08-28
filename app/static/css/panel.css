@@ -698,3 +698,7 @@ label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 5px
 .map-modal-card label { margin-bottom: 0; }
 .map-modal-card input, .map-modal-card select { width: 100%; }
 .map-modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px; }
+
+/* Панель раздела на карте */
+.map-zone-field label { margin-bottom: 4px; }
+.map-zone-field input { width: 100%; }

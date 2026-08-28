@@ -198,6 +198,87 @@ class MapApiTests(TestCase):
             content_type='application/json')
         self.assertEqual(response.status_code, 409)
 
+    def test_zone_create_new_section(self):
+        """«+ Раздел»: создаётся Building и его контур; только stroke, без заливки — фронт."""
+        from apps.catalog.models import Building, MapZone
+        response = self.client_web.post(
+            '/map/api/zones/', json.dumps(
+                {'name': 'Одежда', 'x': 100, 'y': 100, 'width': 500, 'height': 300}),
+            content_type='application/json')
+        self.assertEqual(response.status_code, 201)
+        zone = MapZone.objects.get()
+        self.assertEqual(zone.building.name, 'Одежда')
+        self.assertEqual((zone.width, zone.height), (500, 300))
+        # контур для существующего раздела без контура
+        response = self.client_web.post(
+            '/map/api/zones/', json.dumps(
+                {'name': self.spot_a.building.name, 'x': 700, 'y': 100,
+                 'width': 400, 'height': 200}),
+            content_type='application/json')
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(Building.objects.count(), 2)   # новый Building не создан
+        # повторный контур того же раздела — конфликт
+        response = self.client_web.post(
+            '/map/api/zones/', json.dumps(
+                {'name': 'Одежда', 'x': 0, 'y': 0, 'width': 300, 'height': 300}),
+            content_type='application/json')
+        self.assertEqual(response.status_code, 409)
+
+    def test_zone_min_size_and_move(self):
+        from apps.catalog.models import MapZone
+        zone = MapZone.objects.create(
+            plan=self.plan, building=self.spot_a.building,
+            x=10, y=10, width=500, height=300)
+        response = self.client_web.patch(
+            f'/map/api/zones/{zone.pk}/',
+            json.dumps({'x': 10, 'y': 10, 'width': 50, 'height': 300,
+                        'updated_at': zone.updated_at.isoformat()}),
+            content_type='application/json')
+        self.assertEqual(response.status_code, 400)
+        response = self.client_web.patch(
+            f'/map/api/zones/{zone.pk}/',
+            json.dumps({'x': 300, 'y': 200, 'width': 600, 'height': 400,
+                        'updated_at': zone.updated_at.isoformat()}),
+            content_type='application/json')
+        self.assertEqual(response.status_code, 200)
+        zone.refresh_from_db()
+        self.assertEqual((zone.x, zone.y, zone.width, zone.height), (300, 200, 600, 400))
+
+    def test_zone_rename_and_delete_keeps_building(self):
+        from apps.catalog.models import Building, MapZone
+        zone = MapZone.objects.create(
+            plan=self.plan, building=self.spot_a.building,
+            x=10, y=10, width=500, height=300)
+        response = self.client_web.patch(
+            f'/map/api/zones/{zone.pk}/',
+            json.dumps({'name': 'Новое имя', 'updated_at': zone.updated_at.isoformat()}),
+            content_type='application/json')
+        self.assertEqual(response.status_code, 200)
+        self.spot_a.building.refresh_from_db()
+        self.assertEqual(self.spot_a.building.name, 'Новое имя')
+        # удаление контура не трогает раздел и места
+        response = self.client_web.delete(f'/map/api/zones/{zone.pk}/delete')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(MapZone.objects.count(), 0)
+        self.assertTrue(Building.objects.filter(pk=self.spot_a.building_id).exists())
+        self.assertTrue(Spot.objects.filter(pk=self.spot_a.pk).exists())
+
+    def test_zone_move_does_not_move_spots(self):
+        """Перемещение контура не двигает MapPosition мест внутри него."""
+        from apps.catalog.models import MapZone
+        position = MapPosition.objects.create(
+            plan=self.plan, spot=self.spot_a, x=150, y=150, width=80, height=50)
+        zone = MapZone.objects.create(
+            plan=self.plan, building=self.spot_a.building,
+            x=100, y=100, width=500, height=300)
+        self.client_web.patch(
+            f'/map/api/zones/{zone.pk}/',
+            json.dumps({'x': 900, 'y': 600, 'width': 500, 'height': 300,
+                        'updated_at': zone.updated_at.isoformat()}),
+            content_type='application/json')
+        position.refresh_from_db()
+        self.assertEqual((position.x, position.y), (150, 150))
+
     def test_requires_login(self):
         anonymous = Client()
         self.assertEqual(anonymous.get('/map/api/plan/').status_code, 302)
