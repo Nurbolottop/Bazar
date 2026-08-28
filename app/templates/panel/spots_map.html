@@ -5,74 +5,73 @@
 <div class="map-app" id="map-app">
 
   <div class="map-topbar">
-    <div class="map-topbar-left">
-      <button type="button" class="btn" id="map-exit-edit" hidden>← Выйти из редактора</button>
-      <div class="map-search-box" id="map-search-box">
-        <input type="text" id="map-search" placeholder="Поиск места…">
-      </div>
-    </div>
+    <span class="map-title">Карта рынка</span>
+    <input type="text" id="map-search" placeholder="Поиск места…">
+    <span class="spacer"></span>
+    <span class="muted" id="map-save-status"></span>
     <div class="map-zoom-group">
       <button type="button" id="map-zoom-out" aria-label="Отдалить">−</button>
-      <button type="button" id="map-zoom-level" title="Сбросить масштаб">100%</button>
+      <button type="button" id="map-zoom-level" title="Масштаб 100%">100%</button>
       <button type="button" id="map-zoom-in" aria-label="Приблизить">+</button>
-      <button type="button" id="map-fit">Весь рынок</button>
     </div>
-    <div class="map-topbar-right">
-      <span class="muted" id="map-save-status"></span>
-      {% if can_edit %}<button type="button" class="btn primary" id="map-edit-toggle">Редактировать</button>{% endif %}
-      <a class="btn" id="map-list-link" href="{% url 'panel:spots_table' %}">Список</a>
+    <button type="button" class="btn map-help-btn" id="map-help" aria-label="Справка">?</button>
+    {% if can_edit %}
+    <button type="button" class="btn" id="map-add-btn" hidden>+ Добавить</button>
+    <button type="button" class="btn" id="map-mode-btn">Редактировать</button>
+    {% endif %}
+  </div>
+
+  <div class="map-stage" id="map-stage-wrap">
+    <div id="map-canvas"></div>
+
+    <div id="map-tooltip" class="map-tooltip" hidden></div>
+
+    <div id="map-empty-hint" class="map-empty-hint" hidden>
+      <div class="map-empty-icon">▦</div>
+      <div id="map-empty-text"></div>
+    </div>
+
+    <div id="map-swap-hint" class="map-swap-hint" hidden>
+      Выберите второе место для обмена · <b>Esc</b> — отмена
+    </div>
+
+    <div id="map-float" class="map-float" hidden>
+      <div class="map-float-title" id="map-float-title"></div>
+      <div class="map-float-info" id="map-float-info"></div>
+      <div class="map-float-actions" id="map-float-actions"></div>
+      <div class="map-float-menu" id="map-float-menu" hidden></div>
+    </div>
+
+    <div id="map-legend-pop" class="map-legend-pop" hidden>
+      <div class="map-legend-row"><i class="cell-demo free"></i> Свободно</div>
+      <div class="map-legend-row"><i class="cell-demo occupied"></i> Занято</div>
+      <div class="map-legend-row"><i class="cell-demo debt"></i> Занято, есть долг</div>
+      <div class="map-legend-row"><i class="cell-demo repair"></i> На ремонте</div>
+      <div class="map-legend-sep"></div>
+      <div class="map-legend-row muted">Двумя пальцами — перемещение</div>
+      <div class="map-legend-row muted">Pinch или Ctrl+прокрутка — масштаб</div>
+      <div class="map-legend-sep"></div>
+      <button type="button" class="btn small" id="map-fit">Показать весь рынок</button>
+    </div>
+
+    <div id="map-confirm" class="map-confirm" hidden>
+      <div id="map-confirm-text"></div>
+      <div class="map-confirm-actions">
+        <button type="button" class="btn small" id="map-confirm-no">Отмена</button>
+        <button type="button" class="btn small primary" id="map-confirm-yes">Поменять</button>
+      </div>
     </div>
   </div>
 
-  <div class="map-body">
-    <aside class="map-sidebar" id="map-sidebar" hidden>
-      <div class="map-sidebar-head">
-        <b>Торговые места</b>
-        <input type="text" id="map-sidebar-search" placeholder="Поиск…">
+  <div id="map-add-modal" class="map-modal" hidden>
+    <div class="map-modal-card">
+      <div class="map-modal-head">
+        <b>Добавить место на карту</b>
+        <button type="button" class="map-modal-close" id="map-add-close" aria-label="Закрыть">✕</button>
       </div>
-      <div class="map-sidebar-scroll">
-        <div class="map-list-title">Не размещены <span id="map-unplaced-count">0</span></div>
-        <div id="map-unplaced-list" class="map-list"></div>
-        <div class="map-list-title">Размещены <span id="map-placed-count">0</span></div>
-        <div id="map-placed-list" class="map-list"></div>
-      </div>
-      <div class="map-sidebar-foot muted">Перетащите место из списка на карту</div>
-    </aside>
-
-    <div class="map-stage" id="map-stage-wrap">
-      <div id="map-canvas"></div>
-      <div id="map-tooltip" class="map-tooltip" hidden></div>
-      <div id="map-empty-hint" class="map-empty-hint" hidden>
-        <div class="map-empty-icon">⇱</div>
-        <div id="map-empty-text">На карте пока пусто</div>
-      </div>
-      <div id="map-drop-glow" class="map-drop-glow" hidden></div>
-      <div id="map-confirm" class="map-confirm" hidden>
-        <div id="map-confirm-text"></div>
-        <div class="map-confirm-actions">
-          <button type="button" class="btn small" id="map-confirm-no">Отмена</button>
-          <button type="button" class="btn small primary" id="map-confirm-yes">Поменять</button>
-        </div>
-      </div>
+      <input type="text" id="map-add-search" placeholder="Поиск по номеру…" autocomplete="off">
+      <div class="map-add-list" id="map-add-list"></div>
     </div>
-
-    <aside class="map-props" id="map-props" hidden>
-      <div class="map-props-title" id="map-props-code"></div>
-      <div class="map-props-rows" id="map-props-info"></div>
-      <div class="map-props-size">
-        <label>Ширина <input type="number" id="map-prop-w" min="16" max="800"></label>
-        <label>Высота <input type="number" id="map-prop-h" min="16" max="800"></label>
-      </div>
-      <a class="btn small" id="map-props-open" href="#" target="_blank" rel="noopener">Открыть карточку</a>
-      <button type="button" class="btn small danger" id="map-props-remove">Убрать с карты</button>
-    </aside>
-  </div>
-
-  <div class="map-legend">
-    <span><i class="cell-demo free"></i> Свободно</span>
-    <span><i class="cell-demo occupied"></i> Занято</span>
-    <span><i class="cell-demo debt"></i> Есть долг</span>
-    <span><i class="cell-demo repair"></i> Ремонт</span>
   </div>
 </div>
 
