@@ -24,12 +24,9 @@
     editToggle: byId('map-edit-toggle'),
     exitEdit: byId('map-exit-edit'),
     listLink: byId('map-list-link'),
-    sidebar: byId('map-sidebar'),
-    sidebarSearch: byId('map-sidebar-search'),
     unplacedList: byId('map-unplaced-list'),
-    placedList: byId('map-placed-list'),
     unplacedCount: byId('map-unplaced-count'),
-    placedCount: byId('map-placed-count'),
+    unplacedBlock: byId('map-unplaced-block'),
     props: byId('map-props'),
     propsEmpty: byId('map-props-empty'),
     propsBody: byId('map-props-body'),
@@ -324,7 +321,6 @@
     selected = group;
     transformer.nodes(group && editMode ? [group] : []);
     renderProps();
-    markPlacedActive();
   }
 
   function renderProps() {
@@ -333,8 +329,11 @@
     if (!selected) {
       el.propsEmpty.hidden = false;
       el.propsBody.hidden = true;
+      el.unplacedBlock.hidden = false;
+      renderUnplaced();
       return;
     }
+    el.unplacedBlock.hidden = true;
     el.propsEmpty.hidden = true;
     el.propsBody.hidden = false;
     const meta = selected.getAttr('meta');
@@ -470,21 +469,17 @@
       refreshNode(result.source);
       refreshNode(result.target);
       select(null);
-      renderSidebar();
+      renderUnplaced();
     } catch (e) {
       sourceGroup.position({ x: source.x, y: source.y });
     }
   }
 
-  // ================================================================ sidebar и drag&drop добавления
-  function renderSidebar() {
+  // ================================================================ список неразмещённых и drag&drop добавления
+  function renderUnplaced() {
     if (!cfg.canEdit) return;
-    const query = (el.sidebarSearch.value || '').trim().toLowerCase();
-
     el.unplacedList.innerHTML = '';
-    const visibleUnplaced = unplaced.filter(
-      s => !query || s.code.toLowerCase().includes(query));
-    visibleUnplaced.forEach(function (s) {
+    unplaced.forEach(function (s) {
       const item = document.createElement('div');
       item.className = 'map-item map-item--drag';
       item.draggable = true;
@@ -499,40 +494,12 @@
         () => el.stageWrap.classList.remove('map-drop-ready'));
       el.unplacedList.appendChild(item);
     });
-    if (!visibleUnplaced.length) {
-      el.unplacedList.innerHTML = '<div class="map-item-none">' +
-        (unplaced.length ? 'Не найдено' : 'Все места размещены') + '</div>';
+    if (!unplaced.length) {
+      el.unplacedList.innerHTML = '<div class="map-item-none">Все места размещены</div>';
     }
     el.unplacedCount.textContent = unplaced.length;
-
-    el.placedList.innerHTML = '';
-    let placedTotal = 0;
-    nodes.forEach(function (group) {
-      const meta = group.getAttr('meta');
-      if (!meta.code) return;
-      placedTotal++;
-      if (query && !meta.code.toLowerCase().includes(query)) return;
-      const item = document.createElement('div');
-      item.className = 'map-item map-item--placed';
-      item.dataset.positionId = meta.id;
-      item.innerHTML = '<span class="map-item-check">✓</span><b>' + meta.code +
-        '</b><span class="map-item-sub">' + (meta.tenant || '') + '</span>';
-      item.addEventListener('click', function () {
-        centerOn(meta, 1);
-        select(group);
-      });
-      el.placedList.appendChild(item);
-    });
-    el.placedCount.textContent = placedTotal;
-    markPlacedActive();
   }
 
-  function markPlacedActive() {
-    const activeId = selected ? String(selected.getAttr('meta').id) : null;
-    el.placedList.querySelectorAll('.map-item--placed').forEach(function (item) {
-      item.classList.toggle('is-active', item.dataset.positionId === activeId);
-    });
-  }
 
   function bindDrop() {
     el.canvas.addEventListener('dragover', function (e) {
@@ -555,7 +522,7 @@
         const node = refreshNode(p);
         unplaced = unplaced.filter(s => s.id !== spotId);
         select(node);
-        renderSidebar();
+        renderUnplaced();
       } catch (e2) {}
     });
   }
@@ -574,7 +541,7 @@
         id: meta.spot_id, code: meta.code, building: meta.building || '', status: meta.status,
       });
       unplaced.sort((a, b) => a.code.localeCompare(b.code, 'ru'));
-      renderSidebar();
+      renderUnplaced();
       updateEmptyHint();
     } catch (e) {}
   }
@@ -587,13 +554,11 @@
     el.tooltip.hidden = true;
     nodes.forEach(n => n.draggable(on));
     document.getElementById('map-app').classList.toggle('is-editing', on);
-    el.sidebar.hidden = !on;
     el.editToggle.hidden = on;
     el.exitEdit.hidden = !on;
     el.searchBox.hidden = on;
     el.listLink.hidden = on;
     updateEmptyHint();
-    if (on) renderSidebar();
     setTimeout(resizeStage, 30);
   }
 
@@ -626,7 +591,7 @@
     unplaced = data.unplaced;
     if (!stage) { buildStage(); fitAll(); }
     renderPositions(data.positions);
-    if (editMode) renderSidebar();
+    if (editMode) renderUnplaced();
   }
 
   // ================================================================ события
@@ -641,7 +606,6 @@
   if (el.editToggle) {
     el.editToggle.addEventListener('click', () => setEditMode(true));
     el.exitEdit.addEventListener('click', () => setEditMode(false));
-    el.sidebarSearch.addEventListener('input', renderSidebar);
     el.propsRemove.addEventListener('click', removeSelected);
     el.propW.addEventListener('change', applySizeFromProps);
     el.propH.addEventListener('change', applySizeFromProps);

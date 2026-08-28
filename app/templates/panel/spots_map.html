@@ -25,20 +25,27 @@
   </div>
 
   <div class="map-body">
-    <aside class="map-sidebar" id="map-sidebar" hidden>
-      <div class="map-sidebar-head">
-        <b>Торговые места</b>
-        <input type="text" id="map-sidebar-search" placeholder="Поиск…">
-      </div>
-      <div class="map-sidebar-scroll">
-        <div class="map-list-title">Не размещены <span id="map-unplaced-count">0</span></div>
-        <div id="map-unplaced-list" class="map-list"></div>
-        <div class="map-list-title">Размещены <span id="map-placed-count">0</span></div>
-        <div id="map-placed-list" class="map-list"></div>
-      </div>
-      <div class="map-sidebar-foot muted">Перетащите место из списка на карту</div>
-    </aside>
 
+    <aside class="map-props" id="map-props" hidden>
+      <div class="map-props-empty" id="map-props-empty">
+        <div class="muted">Выберите место на карте</div>
+        <div id="map-unplaced-block" hidden>
+          <div class="map-list-title">Не размещены <span id="map-unplaced-count">0</span></div>
+          <div id="map-unplaced-list" class="map-list"></div>
+          <div class="muted map-drag-hint">Перетащите место на карту</div>
+        </div>
+      </div>
+      <div class="map-props-body" id="map-props-body" hidden>
+        <div class="map-props-title" id="map-props-code"></div>
+        <div class="map-props-rows" id="map-props-info"></div>
+        <div class="map-props-size">
+          <label>Ширина <input type="number" id="map-prop-w" min="16" max="800"></label>
+          <label>Высота <input type="number" id="map-prop-h" min="16" max="800"></label>
+        </div>
+        <a class="btn small" id="map-props-open" href="#" target="_blank" rel="noopener">Открыть карточку</a>
+        <button type="button" class="btn small danger" id="map-props-remove">Убрать с карты</button>
+      </div>
+    </aside>
     <div class="map-stage" id="map-stage-wrap">
       <div id="map-canvas"></div>
       <div id="map-tooltip" class="map-tooltip" hidden></div>
@@ -56,19 +63,6 @@
       </div>
     </div>
 
-    <aside class="map-props" id="map-props" hidden>
-      <div class="map-props-empty muted" id="map-props-empty">Выберите место на карте</div>
-      <div class="map-props-body" id="map-props-body" hidden>
-        <div class="map-props-title" id="map-props-code"></div>
-        <div class="map-props-rows" id="map-props-info"></div>
-        <div class="map-props-size">
-          <label>Ширина <input type="number" id="map-prop-w" min="16" max="800"></label>
-          <label>Высота <input type="number" id="map-prop-h" min="16" max="800"></label>
-        </div>
-        <a class="btn small" id="map-props-open" href="#" target="_blank" rel="noopener">Открыть карточку</a>
-        <button type="button" class="btn small danger" id="map-props-remove">Убрать с карты</button>
-      </div>
-    </aside>
   </div>
 
   <div class="map-legend">
