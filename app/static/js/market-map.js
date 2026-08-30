@@ -14,6 +14,11 @@
     stageWrap: byId('map-stage-wrap'),
     canvas: byId('map-canvas'),
     tooltip: byId('map-tooltip'),
+    info: byId('map-info'),
+    infoTitle: byId('map-info-title'),
+    infoRows: byId('map-info-rows'),
+    infoActions: byId('map-info-actions'),
+    infoClose: byId('map-info-close'),
     status: byId('map-save-status'),
     search: byId('map-search'),
     searchBox: byId('map-search-box'),
@@ -184,7 +189,10 @@
       zoomAt(stage.getPointerPosition(), e.evt.deltaY > 0 ? 1 / 1.1 : 1.1);
     });
     stage.on('click tap', function (e) {
-      if (e.target === stage || e.target.getLayer() === planLayer) select(null);
+      if (e.target === stage || e.target.getLayer() === planLayer) {
+        select(null);
+        hideInfo();
+      }
     });
     stage.on('dragmove', function () { clampStage(); updateZoomLabel(); });
     window.addEventListener('resize', resizeStage);
@@ -259,6 +267,7 @@
 
   function updateZoomLabel() {
     el.zoomLevel.textContent = Math.round(stage.scaleX() * 100) + '%';
+    hideInfo();
   }
 
   function fitAll() {
@@ -310,9 +319,10 @@
 
     group.on('click tap', function (e) {
       e.cancelBubble = true;
-      // В обоих режимах клик выделяет место; переход — кнопкой «Открыть карточку»
       select(group);
       el.tooltip.hidden = true;
+      // В просмотре — окошко с информацией и кнопками перехода
+      if (!editMode) showInfo(group); else hideInfo();
     });
 
     group.on('dragmove', function () {
@@ -389,6 +399,41 @@
   }
 
   // ================================================================ выбор и панель свойств
+  // Окошко информации по клику в режиме просмотра
+  function showInfo(group) {
+    const meta = group.getAttr('meta');
+    el.infoTitle.textContent = 'Место ' + (meta.code || '—');
+    let rows = '';
+    const row = (k, v) => '<div class="map-info-row"><span>' + k + '</span><b>' + v + '</b></div>';
+    rows += row('Статус', statusText(meta));
+    if (meta.building) rows += row('Раздел', meta.building);
+    if (meta.tenant) rows += row('Арендатор', meta.tenant);
+    el.infoRows.innerHTML = rows;
+
+    el.infoActions.innerHTML = '';
+    function action(text, href, primary) {
+      const a = document.createElement('a');
+      a.className = 'btn small' + (primary ? ' primary' : '');
+      a.textContent = text;
+      a.href = href;
+      el.infoActions.appendChild(a);
+    }
+    if (meta.tenant_id) action('Открыть арендатора', urlFor(cfg.urls.tenant, meta.tenant_id), true);
+    if (meta.spot_id) action('Карточка места', urlFor(cfg.urls.spotHistory, meta.spot_id));
+
+    el.info.hidden = false;
+    const box = group.getClientRect();
+    const wrap = el.stageWrap.getBoundingClientRect();
+    const width = el.info.offsetWidth || 220;
+    let left = box.x + box.width / 2 - width / 2;
+    let top = box.y - el.info.offsetHeight - 10;
+    left = Math.max(8, Math.min(left, wrap.width - width - 8));
+    if (top < 8) top = box.y + box.height + 10;
+    el.info.style.left = left + 'px';
+    el.info.style.top = top + 'px';
+  }
+  function hideInfo() { el.info.hidden = true; }
+
   function select(group) {
     selected = group;
     if (group && selectedZone) {
@@ -1007,6 +1052,7 @@
   // ================================================================ режимы
   function setEditMode(on) {
     editMode = on;
+    hideInfo();
     selectZone(null);
     select(null);
     closeSwap(true);
@@ -1070,6 +1116,7 @@
   el.zoomOut.addEventListener('click', () => zoomAt(null, 1 / 1.25));
   el.zoomLevel.addEventListener('click', () => setZoom(1, stage.position()));
   el.fit.addEventListener('click', fitAll);
+  el.infoClose.addEventListener('click', hideInfo);
   el.search.addEventListener('keydown', function (e) {
     if (e.key === 'Enter') { e.preventDefault(); search(this.value); }
   });
@@ -1114,6 +1161,7 @@
     bindDrop();
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape') {
+      if (!el.info.hidden) { hideInfo(); return; }
       if (el.sectionModal && !el.sectionModal.hidden) { closeModal(el.sectionModal); return; }
       if (el.spotModal && !el.spotModal.hidden) { closeModal(el.spotModal); return; }
         if (!el.confirmBox.hidden) {

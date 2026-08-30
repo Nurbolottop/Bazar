@@ -709,3 +709,17 @@ label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 5px
 .map-props.is-editing #map-edit-panel { order: 1; }
 .map-list-title.is-link { cursor: pointer; }
 .map-list-title.is-link:hover { color: var(--accent); }
+
+/* Окошко информации о месте (режим просмотра) */
+.map-info { position: absolute; z-index: 7; min-width: 200px; max-width: 270px;
+  background: var(--card); border: 1px solid var(--border-strong); border-radius: 10px;
+  box-shadow: 0 10px 32px rgba(16,32,26,.24); padding: 12px 14px; }
+.map-info-close { position: absolute; top: 6px; right: 6px; border: none; background: none;
+  color: var(--muted); font-size: 13px; cursor: pointer; padding: 3px 7px; border-radius: 5px; }
+.map-info-close:hover { background: #f2f5f3; }
+.map-info-title { font-weight: 700; font-size: 14.5px; margin-bottom: 6px; padding-right: 20px; }
+.map-info-row { display: flex; justify-content: space-between; gap: 12px;
+  font-size: 13px; padding: 2px 0; }
+.map-info-row span { color: var(--muted); }
+.map-info-actions { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+.map-info-actions .btn { flex: 1; white-space: nowrap; }
