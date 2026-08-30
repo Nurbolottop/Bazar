@@ -76,7 +76,8 @@
   let editMode = false;
   let selected = null;
   let swapTarget = null;          // подсвеченная цель при перетаскивании
-  let pendingSwap = null;         // {sourceGroup, targetGroup}
+  let pendingSwap = null;
+  let confirmResolve = null;      // встроенное подтверждение (вместо системного confirm)         // {sourceGroup, targetGroup}
   let unplaced = [];
   let sections = [];
   const nodes = new Map();        // position.id -> Konva.Group
@@ -668,14 +669,35 @@
   async function removeZone() {
     if (!selectedZone) return;
     const z = selectedZone.getAttr('zmeta');
-    if (!confirm('Убрать контур раздела «' + z.name +
-        '» с карты? Сам раздел и его места останутся в системе.')) return;
+    const ok = await askConfirm(
+      'Убрать контур раздела «<b>' + z.name + '</b>» с карты?<br>' +
+      '<span class="muted">Сам раздел и его места останутся в системе</span>',
+      'Убрать');
+    if (!ok) return;
     try {
       await api(urlFor(cfg.urls.zoneDelete, z.id), 'DELETE');
       selectedZone.destroy();
       zoneNodes.delete(z.id);
       selectZone(null);
     } catch (e) {}
+  }
+
+  // Встроенное подтверждение: системный confirm() браузер может глушить
+  function askConfirm(html, okText) {
+    return new Promise(function (resolve) {
+      el.confirmText.innerHTML = html;
+      el.confirmYes.textContent = okText || 'Подтвердить';
+      el.confirmBox.hidden = false;
+      confirmResolve = resolve;
+    });
+  }
+  function settleConfirm(result) {
+    if (!confirmResolve) return false;
+    const resolve = confirmResolve;
+    confirmResolve = null;
+    el.confirmBox.hidden = true;
+    resolve(result);
+    return true;
   }
 
   // ================================================================ создание раздела и места
@@ -882,8 +904,11 @@
   async function removeSelected() {
     if (!selected) return;
     const meta = selected.getAttr('meta');
-    if (!confirm('Убрать ' + (meta.code || 'позицию') +
-        ' с карты? Само место и его история останутся в системе.')) return;
+    const ok = await askConfirm(
+      'Убрать <b>' + (meta.code || 'позицию') + '</b> с карты?<br>' +
+      '<span class="muted">Само место и его история останутся в системе</span>',
+      'Убрать');
+    if (!ok) return;
     try {
       await api(urlFor(cfg.urls.delete, meta.id), 'DELETE');
       selected.destroy();
@@ -997,14 +1022,23 @@
     el.propsRemove.addEventListener('click', removeSelected);
     el.propW.addEventListener('change', applySizeFromProps);
     el.propH.addEventListener('change', applySizeFromProps);
-    el.confirmYes.addEventListener('click', confirmSwap);
-    el.confirmNo.addEventListener('click', () => closeSwap(true));
+    el.confirmYes.addEventListener('click', function () {
+      if (pendingSwap) { confirmSwap(); return; }
+      settleConfirm(true);
+    });
+    el.confirmNo.addEventListener('click', function () {
+      if (pendingSwap) { closeSwap(true); return; }
+      settleConfirm(false);
+    });
     bindDrop();
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape') {
       if (el.sectionModal && !el.sectionModal.hidden) { closeModal(el.sectionModal); return; }
       if (el.spotModal && !el.spotModal.hidden) { closeModal(el.spotModal); return; }
-        if (!el.confirmBox.hidden) { closeSwap(true); return; }
+        if (!el.confirmBox.hidden) {
+          if (pendingSwap) closeSwap(true); else settleConfirm(false);
+          return;
+        }
         if (selectedZone) { selectZone(null); return; }
         if (editMode) select(null);
       }
