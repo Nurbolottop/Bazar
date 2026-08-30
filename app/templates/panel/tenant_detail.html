@@ -77,7 +77,7 @@
       <td>{{ ts.spot.code }}</td>
       <td>{{ ts.spot.building.name }}</td>
       <td class="num mono">{{ ts.monthly_amount|money }}</td>
-      <td class="muted" data-label="Категория">{{ ts.get_rental_term_display }} · {{ ts.get_rental_category_display }}{% if ts.rents_from_market %} · у рынка{% endif %}</td>
+      <td class="muted" data-label="Категория">{% if ts.is_long_term %}Долгосрочная{% if ts.contract_until %} до {{ ts.contract_until|date:'d.m.Y' }}{% endif %} · {{ ts.get_payment_type_display }} · {% endif %}{{ ts.get_rental_category_display }}{% if ts.rents_from_market %} · у рынка{% endif %}</td>
       <td>{{ ts.start_date|date:'d.m.Y' }}</td>
       <td>{{ ts.end_date|date:'d.m.Y'|default:'—' }}</td>
       <td>{% if ts.is_active %}
@@ -104,14 +104,26 @@
             <option value="">— выберите место —</option>
             {% for spot in free_spots %}<option value="{{ spot.pk }}">{{ spot.code }} ({% if spot.building %}{{ spot.building.name }}{% else %}без раздела{% endif %})</option>{% endfor %}
           </select></div>
-        <div class="field"><label>Сумма аренды в месяц, сом</label>
-          <input type="text" name="monthly_amount" required style="width:100%"></div>
-        <div class="field"><label>Вид аренды</label>
-          <select name="rental_term" style="width:100%">
-            {% for value, label in rental_terms %}
-            <option value="{{ value }}">{{ label }}</option>
-            {% endfor %}
-          </select></div>
+        <div class="field"><label class="inline-check">
+          <input type="checkbox" name="is_long_term" id="assign-longterm">
+          Долгосрочная аренда</label></div>
+        <div id="assign-longterm-fields" hidden>
+          <div class="field"><label>Договор до</label>
+            <input type="date" name="contract_until" style="width:100%"></div>
+          <div class="field"><label>Оплата</label>
+            <select name="payment_type" id="assign-paytype" style="width:100%">
+              <option value="">— выберите —</option>
+              {% for value, label in payment_types %}
+              <option value="{{ value }}">{{ label }}</option>
+              {% endfor %}
+            </select></div>
+        </div>
+        <div id="assign-money-fields">
+          <div class="field"><label>Сумма аренды в месяц, сом</label>
+            <input type="text" name="monthly_amount" required style="width:100%"></div>
+          <div class="field" id="assign-paid-field" hidden><label>Оплачено, сом</label>
+            <input type="text" name="paid_amount" style="width:100%"></div>
+        </div>
         <div class="field"><label>Категория аренды</label>
           <select name="rental_category" style="width:100%">
             {% for value, label in rental_categories %}
@@ -205,6 +217,33 @@
 (function () {
   const modal = document.getElementById('assign-modal');
   document.getElementById('assign-open').addEventListener('click', () => { modal.hidden = false; });
+
+  // Долгосрочная аренда: галочка открывает «Договор до» и выбор оплаты;
+  // поля «в месяц» и «оплачено» выходят только после выбора полной/частичной оплаты.
+  const longterm = document.getElementById('assign-longterm');
+  const longtermFields = document.getElementById('assign-longterm-fields');
+  const paytype = document.getElementById('assign-paytype');
+  const moneyFields = document.getElementById('assign-money-fields');
+  const paidField = document.getElementById('assign-paid-field');
+  const monthlyInput = modal.querySelector('[name=monthly_amount]');
+  function syncAssignFields() {
+    const lt = longterm.checked;
+    longtermFields.hidden = !lt;
+    paytype.required = lt;
+    if (!lt) {
+      moneyFields.hidden = false;
+      paidField.hidden = true;
+      monthlyInput.required = true;
+    } else {
+      const chosen = Boolean(paytype.value);
+      moneyFields.hidden = !chosen;
+      paidField.hidden = !chosen;
+      monthlyInput.required = chosen;
+    }
+  }
+  longterm.addEventListener('change', syncAssignFields);
+  paytype.addEventListener('change', syncAssignFields);
+  syncAssignFields();
   const close = () => { modal.hidden = true; };
   document.getElementById('assign-close').addEventListener('click', close);
   document.getElementById('assign-cancel').addEventListener('click', close);

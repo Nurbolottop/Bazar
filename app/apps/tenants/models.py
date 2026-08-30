@@ -25,9 +25,9 @@ class Tenant(TimestampedModel):
         SELF = 'self', 'Сам ведёт деятельность'
         SUBLEASE = 'sublease', 'Сдаёт в субаренду'
 
-    class RentalTerm(models.TextChoices):
-        LONG = 'long', 'Долгосрочная аренда'
-        PARTIAL = 'partial', 'Частичная аренда'
+    class PaymentType(models.TextChoices):
+        FULL = 'full', 'Полная оплата'
+        PARTIAL = 'partial', 'Частичная оплата'
 
     full_name = models.CharField('ФИО', max_length=255)
     inn = models.CharField('ИНН', max_length=20, unique=True, db_index=True)
@@ -96,9 +96,10 @@ class TenantSpot(TimestampedModel):
     spot = models.ForeignKey(
         Spot, verbose_name='Место', on_delete=models.PROTECT, related_name='tenant_spots')
     monthly_amount = MoneyField('Сумма аренды в месяц')
-    rental_term = models.CharField(
-        'Вид аренды', max_length=10, choices=Tenant.RentalTerm.choices,
-        default=Tenant.RentalTerm.LONG)
+    is_long_term = models.BooleanField('Долгосрочная аренда', default=False)
+    contract_until = models.DateField('Договор до', null=True, blank=True)
+    payment_type = models.CharField(
+        'Оплата', max_length=10, choices=Tenant.PaymentType.choices, blank=True, default='')
     rental_category = models.CharField(
         'Категория аренды', max_length=10, choices=Tenant.RentalCategory.choices,
         default=Tenant.RentalCategory.SELF)

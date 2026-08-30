@@ -16,12 +16,15 @@ from .models import Tenant, TenantSpot
 def assign_spot(*, tenant: Tenant, spot: Spot, monthly_amount: Decimal,
                 start_date: datetime.date | None = None, actor=None,
                 rental_category: str = 'self',
-                rental_term: str = 'long',
+                is_long_term: bool = False,
+                contract_until: datetime.date | None = None,
+                payment_type: str = '',
                 rents_from_market: bool = False) -> TenantSpot:
     """Привязка места: состояние места автоматически становится «занято» (FR-SP-05).
 
     Категория аренды и признак «арендует у рынка» задаются на привязке:
     один арендатор может один контейнер вести сам, другой — пересдавать.
+    Полная/частичная оплата и «договор до» имеют смысл только при долгосрочной аренде.
     """
     with transaction.atomic():
         spot = Spot.objects.select_for_update().get(pk=spot.pk)
@@ -29,12 +32,18 @@ def assign_spot(*, tenant: Tenant, spot: Spot, monthly_amount: Decimal,
             raise ValidationError(f'Место {spot.code} уже занято другим арендатором.')
         if rental_category not in dict(Tenant.RentalCategory.choices):
             rental_category = Tenant.RentalCategory.SELF
-        if rental_term not in dict(Tenant.RentalTerm.choices):
-            rental_term = Tenant.RentalTerm.LONG
+        if is_long_term:
+            if payment_type not in dict(Tenant.PaymentType.choices):
+                raise ValidationError(
+                    'Для долгосрочной аренды выберите полную или частичную оплату.')
+        else:
+            payment_type = ''
+            contract_until = None
         tenant_spot = TenantSpot.objects.create(
             tenant=tenant, spot=spot, monthly_amount=q2(monthly_amount),
-            rental_category=rental_category, rental_term=rental_term,
-            rents_from_market=rents_from_market,
+            rental_category=rental_category, rents_from_market=rents_from_market,
+            is_long_term=is_long_term, contract_until=contract_until,
+            payment_type=payment_type,
             start_date=start_date or timezone.localdate())
         spot.status = Spot.Status.OCCUPIED
         spot.save(update_fields=['status', 'updated_at'])

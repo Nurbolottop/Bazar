@@ -6,6 +6,7 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils.dateparse import parse_date
 from django.views.decorators.http import require_POST
 
 from apps.accounts.services import revoke_all_tokens
@@ -14,6 +15,7 @@ from apps.core.money import q2
 from apps.core.panel import admin_required, client_ip, paginate
 from apps.core.services import audit
 from apps.payments.models import TenantBalance
+from apps.payments.services import create_manual_payment
 
 from . import services
 from .models import Tenant, TenantSpot
@@ -132,7 +134,7 @@ def tenant_detail(request, pk: int):
         'documents': tenant.documents.all(),
         'statuses': Tenant.Status.choices,
         'rental_categories': Tenant.RentalCategory.choices,
-        'rental_terms': Tenant.RentalTerm.choices,
+        'payment_types': Tenant.PaymentType.choices,
     })
 
 
@@ -146,13 +148,31 @@ def tenant_assign_spot(request, pk: int):
     except InvalidOperation:
         messages.error(request, 'Неверный формат суммы аренды.')
         return redirect('panel:tenant_detail', pk=pk)
+    is_long_term = request.POST.get('is_long_term') == 'on'
+    paid_raw = str(request.POST.get('paid_amount', '')).replace(',', '.').strip()
+    try:
+        paid_amount = Decimal(paid_raw) if paid_raw else Decimal('0')
+    except InvalidOperation:
+        messages.error(request, 'Неверный формат суммы «Оплачено».')
+        return redirect('panel:tenant_detail', pk=pk)
+    contract_until = parse_date(request.POST.get('contract_until', '') or '')
     try:
         services.assign_spot(
             tenant=tenant, spot=spot, monthly_amount=amount, actor=request.user,
             rental_category=request.POST.get('rental_category', 'self'),
-            rental_term=request.POST.get('rental_term', 'long'),
+            is_long_term=is_long_term, contract_until=contract_until,
+            payment_type=request.POST.get('payment_type', ''),
             rents_from_market=request.POST.get('rents_from_market') == 'on')
-        messages.success(request, f'Место {spot.code} привязано.')
+        if is_long_term and paid_amount > 0:
+            # «Оплачено» из модалки — реальный платёж: попадает в «Финансы → Платежи»
+            # и гасит начисления (излишек остаётся авансом).
+            create_manual_payment(
+                tenant=tenant, amount=paid_amount, actor=request.user,
+                comment=f'Оплата при привязке места {spot.code}')
+            messages.success(
+                request, f'Место {spot.code} привязано, платёж {q2(paid_amount)} сом внесён.')
+        else:
+            messages.success(request, f'Место {spot.code} привязано.')
     except ValidationError as exc:
         messages.error(request, '; '.join(exc.messages))
     return redirect('panel:tenant_detail', pk=pk)
