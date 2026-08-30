@@ -49,7 +49,7 @@ def _position_payload(position: MapPosition, debtors: set | None = None) -> dict
         'spot_id': spot.pk if spot else None,
         'code': spot.code if spot else None,
         'status': spot.status if spot else 'empty',
-        'building': spot.building.name if spot else None,
+        'building': spot.building.name if spot and spot.building_id else None,
         'tenant': None, 'tenant_id': None, 'has_debt': False,
     }
     if spot:
@@ -90,7 +90,8 @@ def map_plan_json(request):
         ],
         'positions': [_position_payload(p, debtors) for p in positions],
         'unplaced': [
-            {'id': s.pk, 'code': s.code, 'building': s.building.name,
+            {'id': s.pk, 'code': s.code,
+             'building': s.building.name if s.building_id else 'Без раздела',
              'status': s.status}
             for s in unplaced
         ],
@@ -412,14 +413,23 @@ def zone_update(request, pk: int):
 @admin_required
 @require_http_methods(['DELETE'])
 def zone_delete(request, pk: int):
-    """DELETE /map/api/zones/<id>/delete — убрать контур раздела с карты.
+    """DELETE /map/api/zones/<id>/delete — удалить раздел: и контур, и сам раздел.
 
-    Сам раздел (Building), его места и арендаторы остаются в системе.
+    Места раздела остаются в системе (Spot.building обнуляется — «без раздела»),
+    арендаторы, договоры и финансы не затрагиваются.
     """
     zone = get_object_or_404(MapZone.objects.select_related('building'), pk=pk)
-    name = zone.building.name
-    audit(action='map_zone_delete', model_name='MapZone', object_id=pk,
-          actor=request.user, old_value={'building': name, 'x': zone.x, 'y': zone.y},
-          ip=client_ip(request))
-    zone.delete()
-    return JsonResponse({'deleted': pk, 'name': name})
+    building = zone.building
+    name = building.name
+    spots_count = building.spots.count()
+    with transaction.atomic():
+        audit(action='map_zone_delete', model_name='MapZone', object_id=pk,
+              actor=request.user,
+              old_value={'building': name, 'x': zone.x, 'y': zone.y,
+                         'spots_detached': spots_count},
+              ip=client_ip(request))
+        audit(action='building_delete', model_name='Building', object_id=building.pk,
+              actor=request.user, old_value={'name': name},
+              ip=client_ip(request))
+        building.delete()   # контур удалится каскадом, места станут «без раздела»
+    return JsonResponse({'deleted': pk, 'name': name, 'spots_detached': spots_count})

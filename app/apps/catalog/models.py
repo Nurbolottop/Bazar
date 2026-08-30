@@ -63,7 +63,9 @@ class Spot(TimestampedModel):
         REPAIR = 'repair', 'На ремонте'
 
     building = models.ForeignKey(
-        Building, verbose_name='Корпус', on_delete=models.PROTECT, related_name='spots')
+        Building, verbose_name='Раздел рынка', null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='spots',
+        help_text='Пусто — раздел удалён, место осталось без раздела')
     code = models.CharField('Код места', max_length=30, unique=True)
     spot_type = models.CharField(
         'Тип', max_length=20, choices=Type.choices, default=Type.CONTAINER)
@@ -80,7 +82,8 @@ class Spot(TimestampedModel):
         ordering = ['building__code', 'code']
 
     def __str__(self):
-        return f'{self.code} ({self.building.name})'
+        section = self.building.name if self.building_id else 'без раздела'
+        return f'{self.code} ({section})'
 
 
 class MapZone(TimestampedModel):

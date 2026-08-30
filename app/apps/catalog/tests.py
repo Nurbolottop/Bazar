@@ -244,24 +244,29 @@ class MapApiTests(TestCase):
         zone.refresh_from_db()
         self.assertEqual((zone.x, zone.y, zone.width, zone.height), (300, 200, 600, 400))
 
-    def test_zone_rename_and_delete_keeps_building(self):
+    def test_zone_rename_and_delete_removes_section_keeps_spots(self):
+        """«Удалить раздел»: контур и Building удаляются, места остаются без раздела."""
         from apps.catalog.models import Building, MapZone
+        building = self.spot_a.building
         zone = MapZone.objects.create(
-            plan=self.plan, building=self.spot_a.building,
-            x=10, y=10, width=500, height=300)
+            plan=self.plan, building=building, x=10, y=10, width=500, height=300)
         response = self.client_web.patch(
             f'/map/api/zones/{zone.pk}/',
             json.dumps({'name': 'Новое имя', 'updated_at': zone.updated_at.isoformat()}),
             content_type='application/json')
         self.assertEqual(response.status_code, 200)
-        self.spot_a.building.refresh_from_db()
-        self.assertEqual(self.spot_a.building.name, 'Новое имя')
-        # удаление контура не трогает раздел и места
+        building.refresh_from_db()
+        self.assertEqual(building.name, 'Новое имя')
+
         response = self.client_web.delete(f'/map/api/zones/{zone.pk}/delete')
         self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['spots_detached'], 2)
         self.assertEqual(MapZone.objects.count(), 0)
-        self.assertTrue(Building.objects.filter(pk=self.spot_a.building_id).exists())
-        self.assertTrue(Spot.objects.filter(pk=self.spot_a.pk).exists())
+        self.assertFalse(Building.objects.filter(pk=building.pk).exists())
+        # места живы, но без раздела; арендаторы и позиции не тронуты
+        self.spot_a.refresh_from_db()
+        self.assertIsNone(self.spot_a.building)
+        self.assertTrue(Spot.objects.filter(pk=self.spot_b.pk).exists())
 
     def test_zone_move_does_not_move_spots(self):
         """Перемещение контура не двигает MapPosition мест внутри него."""

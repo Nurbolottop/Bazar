@@ -670,15 +670,18 @@
     if (!selectedZone) return;
     const z = selectedZone.getAttr('zmeta');
     const ok = await askConfirm(
-      'Убрать контур раздела «<b>' + z.name + '</b>» с карты?<br>' +
-      '<span class="muted">Сам раздел и его места останутся в системе</span>',
-      'Убрать');
+      'Удалить раздел «<b>' + z.name + '</b>»?<br>' +
+      '<span class="muted">Контур и сам раздел будут удалены. ' +
+      'Места останутся в системе — без раздела</span>',
+      'Удалить');
     if (!ok) return;
     try {
       await api(urlFor(cfg.urls.zoneDelete, z.id), 'DELETE');
+      sections = sections.filter(s => s.id !== z.building_id);
       selectedZone.destroy();
       zoneNodes.delete(z.id);
       selectZone(null);
+      await load();   // места получают «без раздела», списки обновляются
     } catch (e) {}
   }
 

@@ -78,7 +78,7 @@ class SummaryView(APIView):
 
 class SpotSerializer(serializers.ModelSerializer):
     code = serializers.CharField(source='spot.code')
-    building = serializers.CharField(source='spot.building.name')
+    building = serializers.SerializerMethodField()
     spot_type = serializers.CharField(source='spot.spot_type')
     area_sqm = serializers.DecimalField(
         source='spot.area_sqm', max_digits=8, decimal_places=2)
@@ -88,6 +88,9 @@ class SpotSerializer(serializers.ModelSerializer):
         model = TenantSpot
         fields = ['id', 'code', 'building', 'spot_type', 'area_sqm',
                   'monthly_amount', 'start_date', 'photo']
+
+    def get_building(self, obj) -> str:
+        return obj.spot.building.name if obj.spot.building_id else ''
 
 
 class MySpotsView(APIView):

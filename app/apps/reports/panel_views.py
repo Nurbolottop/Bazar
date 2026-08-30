@@ -71,7 +71,8 @@ def reports_view(request):
             return services.excel_response(
                 'free_spots.xlsx',
                 ['Место', 'Корпус', 'Свободно с', 'Дней простоя'],
-                [[r['spot'].code, r['spot'].building.name,
+                [[r['spot'].code,
+                  r['spot'].building.name if r['spot'].building_id else '—',
                   r['since'].strftime('%d.%m.%Y') if r['since'] else '—',
                   r['idle_days'] if r['idle_days'] is not None else '—']
                  for r in rows])

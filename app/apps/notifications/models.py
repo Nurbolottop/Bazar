@@ -94,7 +94,7 @@ class Announcement(TimestampedModel):
     audience = models.CharField(
         'Получатели', max_length=10, choices=Audience.choices, default=Audience.ALL)
     building = models.ForeignKey(
-        Building, verbose_name='Корпус', null=True, blank=True, on_delete=models.PROTECT)
+        Building, verbose_name='Корпус', null=True, blank=True, on_delete=models.SET_NULL)
     publish_from = models.DateTimeField('Публикация с', null=True, blank=True)
     publish_to = models.DateTimeField('Публикация до', null=True, blank=True)
     sent_at = models.DateTimeField('Разослано', null=True, blank=True)
