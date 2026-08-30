@@ -186,7 +186,7 @@
     stage.on('click tap', function (e) {
       if (e.target === stage || e.target.getLayer() === planLayer) select(null);
     });
-    stage.on('dragmove', updateZoomLabel);
+    stage.on('dragmove', function () { clampStage(); updateZoomLabel(); });
     window.addEventListener('resize', resizeStage);
   }
 
@@ -196,9 +196,46 @@
     stage.height(el.canvas.clientHeight);
   }
 
+  function fitScale() {
+    const padding = 40;
+    return Math.min(
+      (stage.width() - padding) / plan.width,
+      (stage.height() - padding) / plan.height, 2);
+  }
+
+  // План не «теряется»: по каждой оси лист либо отцентрован, либо у рамки
+  function clampStage() {
+    if (!plan) return;
+    const scale = stage.scaleX();
+    const pad = 20;
+    const planW = plan.width * scale, planH = plan.height * scale;
+    let x = stage.x(), y = stage.y();
+    if (planW <= stage.width() - pad * 2) x = (stage.width() - planW) / 2;
+    else x = Math.min(pad, Math.max(stage.width() - planW - pad, x));
+    if (planH <= stage.height() - pad * 2) y = (stage.height() - planH) / 2;
+    else y = Math.min(pad, Math.max(stage.height() - planH - pad, y));
+    stage.position({ x: x, y: y });
+  }
+
+  // Перетаскиваемый объект не выходит за границы листа плана
+  function clampToPlan(pos, node) {
+    const scale = stage.scaleX();
+    const rect = node.findOne('.body') || node.findOne('.zbody');
+    const w = rect ? rect.width() * node.scaleX() : 0;
+    const h = rect ? rect.height() * node.scaleY() : 0;
+    const minX = stage.x(), minY = stage.y();
+    const maxX = stage.x() + (plan.width - w) * scale;
+    const maxY = stage.y() + (plan.height - h) * scale;
+    return {
+      x: Math.min(maxX, Math.max(minX, pos.x)),
+      y: Math.min(maxY, Math.max(minY, pos.y)),
+    };
+  }
+
   function zoomAt(point, factor) {
     const oldScale = stage.scaleX();
-    const newScale = Math.min(4, Math.max(0.1, oldScale * factor));
+    const minScale = plan ? Math.min(fitScale(), 2) : 0.1;
+    const newScale = Math.min(4, Math.max(minScale, oldScale * factor));
     if (!point) point = { x: stage.width() / 2, y: stage.height() / 2 };
     const mapPoint = {
       x: (point.x - stage.x()) / oldScale,
@@ -209,12 +246,14 @@
       x: point.x - mapPoint.x * newScale,
       y: point.y - mapPoint.y * newScale,
     });
+    clampStage();
     updateZoomLabel();
   }
 
   function setZoom(scale, center) {
     stage.scale({ x: scale, y: scale });
     if (center) stage.position(center);
+    clampStage();
     updateZoomLabel();
   }
 
@@ -223,10 +262,7 @@
   }
 
   function fitAll() {
-    const padding = 60;
-    const scale = Math.min(
-      (stage.width() - padding) / plan.width,
-      (stage.height() - padding) / plan.height, 2);
+    const scale = fitScale();
     setZoom(scale, {
       x: (stage.width() - plan.width * scale) / 2,
       y: (stage.height() - plan.height * scale) / 2,
@@ -244,7 +280,10 @@
   // ================================================================ узлы
   function makeNode(p) {
     const c = colorFor(p);
-    const group = new Konva.Group({ x: p.x, y: p.y, draggable: editMode });
+    const group = new Konva.Group({
+      x: p.x, y: p.y, draggable: editMode,
+      dragBoundFunc: function (pos) { return clampToPlan(pos, this); },
+    });
     const rect = new Konva.Rect({
       name: 'body', width: p.width, height: p.height,
       fill: c.fill, stroke: c.stroke, strokeWidth: 1.5, cornerRadius: 4,
@@ -537,8 +576,10 @@
 
   // ================================================================ контуры разделов
   function makeZoneNode(z) {
-    const group = new Konva.Group({ x: z.x, y: z.y, draggable: editMode,
-      listening: editMode });
+    const group = new Konva.Group({
+      x: z.x, y: z.y, draggable: editMode, listening: editMode,
+      dragBoundFunc: function (pos) { return clampToPlan(pos, this); },
+    });
     // Только контур: fill отсутствует — внутренняя область не перехватывает
     // клики и pan; интерактивна граница (hitStrokeWidth) и подпись
     const rect = new Konva.Rect({
