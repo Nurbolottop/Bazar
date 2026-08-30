@@ -50,6 +50,7 @@ def _position_payload(position: MapPosition, debtors: set | None = None) -> dict
         'code': spot.code if spot else None,
         'status': spot.status if spot else 'empty',
         'building': spot.building.name if spot and spot.building_id else None,
+        'building_id': spot.building_id if spot else None,
         'tenant': None, 'tenant_id': None, 'has_debt': False,
     }
     if spot:
@@ -92,7 +93,7 @@ def map_plan_json(request):
         'unplaced': [
             {'id': s.pk, 'code': s.code,
              'building': s.building.name if s.building_id else 'Без раздела',
-             'status': s.status}
+             'building_id': s.building_id, 'status': s.status}
             for s in unplaced
         ],
     })
@@ -433,3 +434,27 @@ def zone_delete(request, pk: int):
               ip=client_ip(request))
         building.delete()   # контур удалится каскадом, места станут «без раздела»
     return JsonResponse({'deleted': pk, 'name': name, 'spots_detached': spots_count})
+
+
+@admin_required
+@require_POST
+def spot_set_section(request, pk: int):
+    """POST /map/api/spots/<id>/section — перенести место в другой раздел.
+
+    Вызывается после подтверждения, когда место на карте оказалось внутри
+    контура другого раздела. Меняется только Spot.building; арендаторы,
+    договоры и позиция на карте не затрагиваются.
+    """
+    data = _json_body(request)
+    spot = get_object_or_404(Spot.objects.select_related('building'), pk=pk)
+    building = Building.objects.filter(pk=data.get('section_id')).first()
+    if building is None:
+        return JsonResponse({'error': 'Раздел не найден.'}, status=400)
+    old_name = spot.building.name if spot.building_id else None
+    spot.building = building
+    spot.save(update_fields=['building', 'updated_at'])
+    audit(action='spot_section_change', model_name='Spot', object_id=spot.pk,
+          actor=request.user, old_value={'section': old_name},
+          new_value={'section': building.name}, ip=client_ip(request))
+    return JsonResponse({'id': spot.pk, 'building': building.name,
+                         'building_id': building.pk})

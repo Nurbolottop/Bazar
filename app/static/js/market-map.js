@@ -464,6 +464,45 @@
     saveGeometry(selected);
   }
 
+  // Согласование раздела с положением: место внутри чужого контура —
+  // предложить перенести его в этот раздел (бизнес-связь меняется только
+  // после подтверждения; координаты разделов и мест независимы)
+  function zoneAtPosition(meta) {
+    const cx = meta.x + meta.width / 2, cy = meta.y + meta.height / 2;
+    let found = null;
+    zoneNodes.forEach(function (zn) {
+      if (found) return;
+      const z = zn.getAttr('zmeta');
+      if (cx >= z.x && cx <= z.x + z.width && cy >= z.y && cy <= z.y + z.height)
+        found = zn;
+    });
+    return found;
+  }
+
+  async function reconcileSection(group) {
+    const meta = group.getAttr('meta');
+    if (!meta.spot_id) return;
+    const zoneNode = zoneAtPosition(meta);
+    if (!zoneNode) return;
+    const z = zoneNode.getAttr('zmeta');
+    if (z.building_id === meta.building_id) return;
+    const ok = await askConfirm(
+      'Место <b>' + meta.code + '</b> стоит в разделе «<b>' + z.name + '</b>», ' +
+      'а числится в «' + (meta.building || 'Без раздела') + '».<br>' +
+      'Перенести его в раздел «' + z.name + '»?',
+      'Перенести');
+    if (!ok) return;
+    try {
+      const result = await api(urlFor(cfg.urls.spotSection, meta.spot_id), 'POST',
+        { section_id: z.building_id });
+      meta.building = result.building;
+      meta.building_id = result.building_id;
+      group.setAttr('meta', meta);
+      renderProps();
+      setStatus('Место ' + meta.code + ' перенесено в раздел «' + result.building + '»');
+    } catch (e) {}
+  }
+
   // ================================================================ сохранение геометрии
   function geometryOf(group) {
     const rect = group.findOne('.body');
@@ -482,6 +521,7 @@
         Object.assign({ updated_at: meta.updated_at }, geometry));
       group.setAttr('meta', updated);
       group.position({ x: updated.x, y: updated.y });
+      reconcileSection(group);
       renderProps();
     } catch (e) {
       if (e.status === 409) { await load(); return; }
@@ -941,6 +981,7 @@
         unplaced = unplaced.filter(s => s.id !== spotId);
         select(node);
         renderUnplaced();
+        reconcileSection(node);
       } catch (e2) {}
     });
   }

@@ -284,6 +284,26 @@ class MapApiTests(TestCase):
         position.refresh_from_db()
         self.assertEqual((position.x, position.y), (150, 150))
 
+    def test_spot_set_section(self):
+        """Перенос места в другой раздел: меняется только Spot.building."""
+        from apps.catalog.models import Building
+        other = Building.objects.create(name='Другой', code='ДР')
+        position = MapPosition.objects.create(
+            plan=self.plan, spot=self.spot_a, x=10, y=10, width=80, height=50)
+        response = self.client_web.post(
+            f'/map/api/spots/{self.spot_a.pk}/section',
+            json.dumps({'section_id': other.pk}), content_type='application/json')
+        self.assertEqual(response.status_code, 200)
+        self.spot_a.refresh_from_db()
+        self.assertEqual(self.spot_a.building, other)
+        position.refresh_from_db()
+        self.assertEqual((position.x, position.y), (10, 10))  # позиция не тронута
+        # несуществующий раздел
+        response = self.client_web.post(
+            f'/map/api/spots/{self.spot_a.pk}/section',
+            json.dumps({'section_id': 99999}), content_type='application/json')
+        self.assertEqual(response.status_code, 400)
+
     def test_requires_login(self):
         anonymous = Client()
         self.assertEqual(anonymous.get('/map/api/plan/').status_code, 302)

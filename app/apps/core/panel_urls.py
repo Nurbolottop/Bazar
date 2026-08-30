@@ -68,6 +68,7 @@ urlpatterns = [
     path('map/api/zones/<int:pk>/', map_views.zone_update, name='map_zone_update'),
     path('map/api/zones/<int:pk>/delete', map_views.zone_delete, name='map_zone_delete'),
     path('map/api/spots/', map_views.map_spot_create, name='map_spot_create'),
+    path('map/api/spots/<int:pk>/section', map_views.spot_set_section, name='map_spot_section'),
     path('spots/list/', catalog.spots_table, name='spots_table'),
     path('spots/manage/', catalog.spots_manage, name='spots_manage'),
     path('spots/create/', catalog.spot_create, name='spot_create'),
