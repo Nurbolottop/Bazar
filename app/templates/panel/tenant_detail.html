@@ -66,11 +66,11 @@
     </select>
     <button class="btn small">Сменить статус</button>
   </form>
-  &nbsp;·&nbsp;
-  <form class="inline" method="post" action="{% url 'panel:tenant_revoke_tokens' tenant.pk %}"
-        onsubmit="return confirm('Отозвать все токены доступа арендатора?')">
-    {% csrf_token %}<button class="btn small danger">Отозвать токены приложения</button>
-  </form>
+  {% comment %}
+    Кнопка «Отозвать токены приложения» скрыта по решению от 30.08.2026.
+    Механизм жив: endpoint panel:tenant_revoke_tokens работает, при архивации
+    токены отзываются автоматически. Вернуть — раскомментировать форму.
+  {% endcomment %}
 </div>
 
 <div class="panel">
