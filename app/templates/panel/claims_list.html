@@ -30,12 +30,12 @@
       <td data-label="Статус"><span class="status {{ claim.status }}">{{ claim.get_status_display }}</span></td>
       <td>
         {% if claim.status == 'pending' %}
-        <form class="inline" method="post" action="{% url 'panel:claim_confirm' claim.pk %}"
-              onsubmit="return confirm('Подтвердить оплату {{ claim.declared_amount }} сом?')">
+        <form class="inline" method="post" action="{% url 'panel:claim_confirm' claim.pk %}" data-confirm="Подтвердить оплату {{ claim.declared_amount }} сом?">
           {% csrf_token %}<button class="btn small primary">Подтвердить</button>
         </form>
         <form class="inline" method="post" action="{% url 'panel:claim_reject' claim.pk %}"
-              onsubmit="return rejectPrompt(this)">
+              data-reason="Причина отклонения заявки {{ claim.tenant.full_name }}"
+              data-confirm-ok="Отклонить">
           {% csrf_token %}<input type="hidden" name="reason">
           <button class="btn small danger">Отклонить</button>
         </form>
@@ -49,13 +49,8 @@
 {% endblock %}
 {% block scripts %}
 <script>
+/* Готовые причины отклонения — кнопки-подсказки в модальном окне */
 const REASONS = {{ reject_reasons|safe }};
-function rejectPrompt(form) {
-  const hint = REASONS.length ? '\n\nЧастые причины:\n— ' + REASONS.join('\n— ') : '';
-  const reason = prompt('Причина отклонения (обязательно):' + hint);
-  if (!reason) return false;
-  form.querySelector('[name=reason]').value = reason;
-  return true;
-}
+document.querySelectorAll('form[data-reason]').forEach(f => { f._presets = REASONS; });
 </script>
 {% endblock %}

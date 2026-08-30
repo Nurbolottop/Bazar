@@ -27,8 +27,7 @@
     <h2>Массовое создание мест</h2>
     <p class="muted">Создаёт сразу ряд мест с автонумерацией: А-01, А-02, … Быстрый способ
     заполнить корпус.</p>
-    <form method="post" action="{% url 'panel:spots_mass_create' %}"
-          onsubmit="return confirm('Создать места по шаблону?')">
+    <form method="post" action="{% url 'panel:spots_mass_create' %}" data-confirm="Создать места по шаблону?">
       {% csrf_token %}
       <div class="field"><label>Корпус</label>
         <select name="building_id" required>

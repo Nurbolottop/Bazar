@@ -43,10 +43,18 @@ function markChanged(input) {
     count ? 'Изменено: ' + count : '';
 }
 function confirmSave() {
+  const form = document.getElementById('amounts-form');
+  if (form.dataset.confirmed === '1') { delete form.dataset.confirmed; return true; }
   const changed = [...document.querySelectorAll('#amounts-form input.amount-input')]
     .filter(el => el.value.trim() !== el.dataset.original);
-  if (!changed.length) { alert('Изменений нет.'); return false; }
-  return confirm('Сохранить изменения по ' + changed.length + ' позициям? Суммы применятся при следующем прогоне начислений.');
+  if (!changed.length) {
+    panelConfirm('Изменений нет — суммы совпадают с сохранёнными.', { ok: 'Понятно' });
+    return false;
+  }
+  panelConfirm('Сохранить изменения по ' + changed.length + ' позициям? ' +
+    'Суммы применятся при следующем прогоне начислений.', { ok: 'Сохранить' })
+    .then(ok => { if (ok) { form.dataset.confirmed = '1'; form.requestSubmit(); } });
+  return false;
 }
 </script>
 {% endblock %}

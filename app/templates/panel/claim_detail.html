@@ -50,8 +50,7 @@
 
     {% if claim.status == 'pending' %}
     <h2>Решение</h2>
-    <form method="post" action="{% url 'panel:claim_confirm' claim.pk %}"
-          onsubmit="return confirm('Подтвердить оплату?')">
+    <form method="post" action="{% url 'panel:claim_confirm' claim.pk %}" data-confirm="Подтвердить оплату?">
       {% csrf_token %}
       <input type="hidden" name="next" value="{% url 'panel:claims' %}">
       <div class="field">

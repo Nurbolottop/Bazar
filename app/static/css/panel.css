@@ -738,3 +738,24 @@ label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 5px
 .topbar-actions { display: flex; align-items: center; gap: 10px; margin-left: auto; }
 .topbar-actions:empty { display: none; }
 .topbar-actions + .user { margin-left: 14px; }
+
+/* Модальные окна панели (замена системных confirm/prompt) */
+.pmodal { position: fixed; inset: 0; z-index: 120; background: rgba(12,22,18,.5);
+  display: none; align-items: center; justify-content: center; padding: 20px;
+  backdrop-filter: blur(2px); }
+.pmodal.open { display: flex; }
+.pmodal-card { background: var(--card); border-radius: 12px; width: 100%;
+  max-width: 400px; box-shadow: 0 18px 60px rgba(0,0,0,.32); padding: 20px;
+  display: flex; flex-direction: column; gap: 14px; }
+.pmodal-text { font-size: 15px; line-height: 1.5; color: var(--text); }
+.pmodal-input textarea { width: 100%; min-height: 64px; }
+.pmodal-presets { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.pmodal-presets:empty { display: none; }
+.pmodal-preset { border: 1px solid var(--border-strong); background: #fbfcfb;
+  border-radius: 999px; padding: 5px 12px; font-size: 13px; cursor: pointer;
+  color: var(--text); font-family: inherit; }
+.pmodal-preset:hover { border-color: var(--accent); background: var(--accent-soft); }
+.pmodal-error { color: var(--danger); font-size: 13px; margin-top: 5px; }
+.pmodal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+.pmodal-ok.danger-solid { background: var(--danger); border-color: var(--danger); }
+.pmodal-ok.danger-solid:hover { background: #96190f; }

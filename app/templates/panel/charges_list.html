@@ -9,8 +9,7 @@
     <form class="inline" method="post" action="{% url 'panel:billing_preview' %}">
       {% csrf_token %}<button class="btn">Предварительный просмотр</button>
     </form>
-    <form class="inline" method="post" action="{% url 'panel:billing_run' %}"
-          onsubmit="return confirm('Запустить прогон начислений за сегодняшнюю дату?')">
+    <form class="inline" method="post" action="{% url 'panel:billing_run' %}" data-confirm="Запустить прогон начислений за сегодняшнюю дату?">
       {% csrf_token %}<button class="btn primary">Запустить прогон</button>
     </form>
   </div>
@@ -49,7 +48,7 @@
       <td data-label="Статус"><span class="status {{ c.status }}">{{ c.get_status_display }}</span></td>
       <td>{% if c.status != 'cancelled' and c.status != 'paid' %}
         <form class="inline" method="post" action="{% url 'panel:charge_cancel' c.pk %}"
-              onsubmit="return cancelReason(this)">
+              data-reason="Причина отмены начисления" data-confirm-ok="Отменить начисление">
           {% csrf_token %}<input type="hidden" name="reason">
           <button class="btn small danger">Отменить</button>
         </form>
@@ -80,14 +79,4 @@
     {% empty %}<tr><td colspan="5" class="muted">Прогонов ещё не было</td></tr>{% endfor %}
   </table>
 </div>
-{% endblock %}
-{% block scripts %}
-<script>
-function cancelReason(form) {
-  const reason = prompt('Причина отмены начисления (обязательно):');
-  if (!reason) return false;
-  form.querySelector('[name=reason]').value = reason;
-  return true;
-}
-</script>
 {% endblock %}

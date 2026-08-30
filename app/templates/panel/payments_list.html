@@ -36,7 +36,8 @@
         {% if p.reversed_reason %}<div class="muted">{{ p.reversed_reason }}</div>{% endif %}</td>
       <td>{% if p.status == 'active' %}
         <form class="inline" method="post" action="{% url 'panel:payment_reverse' p.pk %}"
-              onsubmit="return reverseReason(this)">
+              data-reason="Причина отмены платежа. Долг арендатора будет восстановлен"
+              data-confirm-ok="Отменить платёж">
           {% csrf_token %}<input type="hidden" name="reason">
           <button class="btn small danger">Сторно</button>
         </form>
@@ -46,14 +47,4 @@
   </table>
   {% include 'panel/_pagination.html' %}
 </div>
-{% endblock %}
-{% block scripts %}
-<script>
-function reverseReason(form) {
-  const reason = prompt('Причина отмены платежа (обязательно). Долг арендатора будет восстановлен:');
-  if (!reason) return false;
-  form.querySelector('[name=reason]').value = reason;
-  return true;
-}
-</script>
 {% endblock %}

@@ -28,16 +28,14 @@
 
 <div class="panel">
   <h2 style="margin-top:0">Действия</h2>
-  <form class="inline" method="post" action="{% url 'panel:tenant_manual_payment' tenant.pk %}"
-        onsubmit="return confirm('Внести платёж?')">
+  <form class="inline" method="post" action="{% url 'panel:tenant_manual_payment' tenant.pk %}" data-confirm="Внести платёж?">
     {% csrf_token %}
     <input type="text" name="amount" placeholder="Сумма" class="amount-input">
     <input type="text" name="comment" placeholder="Комментарий">
     <button class="btn primary small">Внести платёж</button>
   </form>
   &nbsp;·&nbsp;
-  <form class="inline" method="post" action="{% url 'panel:tenant_adjust_debt' tenant.pk %}"
-        onsubmit="return confirm('Провести корректировку долга?')">
+  <form class="inline" method="post" action="{% url 'panel:tenant_adjust_debt' tenant.pk %}" data-confirm="Провести корректировку долга?">
     {% csrf_token %}
     <select name="direction">
       <option value="minus">Уменьшить долг</option>
@@ -48,16 +46,14 @@
     <button class="btn small">Корректировать долг</button>
   </form>
   &nbsp;·&nbsp;
-  <form class="inline" method="post" action="{% url 'panel:tenant_manual_charge' tenant.pk %}"
-        onsubmit="return confirm('Создать разовое начисление?')">
+  <form class="inline" method="post" action="{% url 'panel:tenant_manual_charge' tenant.pk %}" data-confirm="Создать разовое начисление?">
     {% csrf_token %}
     <input type="text" name="amount" placeholder="Сумма" class="amount-input">
     <input type="text" name="comment" placeholder="Комментарий">
     <button class="btn small">Разовое начисление</button>
   </form>
   <hr style="border:none;border-top:1px solid var(--border);margin:12px 0">
-  <form class="inline" method="post" action="{% url 'panel:tenant_set_status' tenant.pk %}"
-        onsubmit="return confirm('Сменить статус арендатора?')">
+  <form class="inline" method="post" action="{% url 'panel:tenant_set_status' tenant.pk %}" data-confirm="Сменить статус арендатора?">
     {% csrf_token %}
     <select name="status">
       {% for value, label in statuses %}
@@ -85,8 +81,7 @@
       <td>{{ ts.start_date|date:'d.m.Y' }}</td>
       <td>{{ ts.end_date|date:'d.m.Y'|default:'—' }}</td>
       <td>{% if ts.is_active %}
-        <form class="inline" method="post" action="{% url 'panel:tenant_release_spot' tenant.pk ts.pk %}"
-              onsubmit="return confirm('Освободить место {{ ts.spot.code }}?')">
+        <form class="inline" method="post" action="{% url 'panel:tenant_release_spot' tenant.pk ts.pk %}" data-confirm="Освободить место {{ ts.spot.code }}?">
           {% csrf_token %}<button class="btn small">Освободить</button>
         </form>
       {% endif %}</td>
@@ -120,7 +115,7 @@
       <td class="muted">{{ c.get_source_display }}{% if c.comment %} · {{ c.comment }}{% endif %}</td>
       <td>{% if c.status != 'cancelled' and c.status != 'paid' %}
         <form class="inline" method="post" action="{% url 'panel:charge_cancel' c.pk %}"
-              onsubmit="return cancelReason(this)">
+              data-reason="Причина отмены начисления" data-confirm-ok="Отменить начисление">
           {% csrf_token %}
           <input type="hidden" name="reason">
           <input type="hidden" name="next" value="{% url 'panel:tenant_detail' tenant.pk %}">
@@ -174,14 +169,4 @@
     <button class="btn small">Загрузить</button>
   </form>
 </div>
-{% endblock %}
-{% block scripts %}
-<script>
-function cancelReason(form) {
-  const reason = prompt('Причина отмены начисления (обязательно):');
-  if (!reason) return false;
-  form.querySelector('[name=reason]').value = reason;
-  return true;
-}
-</script>
 {% endblock %}

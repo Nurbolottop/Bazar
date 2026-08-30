@@ -13,7 +13,8 @@
       <input type="file" name="file" accept=".xlsx" required></div>
     <button class="btn" name="mode" value="dry">Пробный прогон</button>
     <button class="btn primary" name="mode" value="final"
-            onclick="return confirm('Выполнить окончательный импорт? Данные будут записаны в базу.')">
+            data-confirm="Выполнить окончательный импорт? Данные будут записаны в базу."
+            data-confirm-ok="Импортировать">
       Окончательный импорт</button>
     <a class="btn" href="{% url 'panel:import_template' %}">Скачать шаблон</a>
   </form>

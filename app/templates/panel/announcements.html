@@ -4,7 +4,7 @@
 <h1>Объявления</h1>
 
 <div class="panel" style="max-width:760px">
-  <form method="post" onsubmit="return confirm('Отправить объявление?')">
+  <form method="post" data-confirm="Отправить объявление?">
     {% csrf_token %}
     <div class="form-grid">
       <div class="field"><label>Заголовок (рус.) *</label>

@@ -13,17 +13,18 @@
       <td>{{ admin.last_login|date:'d.m.Y H:i'|default:'—' }}</td>
       <td>
         {% if admin.pk != request.user.pk %}
-        <form class="inline" method="post" onsubmit="return confirm('Изменить состояние?')">
+        <form class="inline" method="post" data-confirm="Изменить состояние?">
           {% csrf_token %}
           <input type="hidden" name="user_id" value="{{ admin.pk }}">
           <button class="btn small" name="action" value="{% if admin.is_active %}block{% else %}unblock{% endif %}">
             {% if admin.is_active %}Заблокировать{% else %}Разблокировать{% endif %}</button>
         </form>
         {% endif %}
-        <form class="inline" method="post" onsubmit="return passwordPrompt(this)">
+        <form class="inline" method="post" data-reason="Новый пароль (не менее 10 символов)"
+              data-confirm-ok="Сменить пароль">
           {% csrf_token %}
           <input type="hidden" name="user_id" value="{{ admin.pk }}">
-          <input type="hidden" name="password">
+          <input type="hidden" name="password" data-reason-target>
           <button class="btn small" name="action" value="set_password">Сменить пароль</button>
         </form>
       </td>
@@ -43,14 +44,4 @@
     <button class="btn primary">Создать</button>
   </form>
 </div>
-{% endblock %}
-{% block scripts %}
-<script>
-function passwordPrompt(form) {
-  const password = prompt('Новый пароль (не менее 10 символов):');
-  if (!password) return false;
-  form.querySelector('[name=password]').value = password;
-  return true;
-}
-</script>
 {% endblock %}

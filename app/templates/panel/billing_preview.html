@@ -35,8 +35,7 @@
 </table></div>
 {% endif %}
 
-<form class="inline" method="post" action="{% url 'panel:billing_run' %}"
-      onsubmit="return confirm('Выполнить прогон и создать начисления?')">
+<form class="inline" method="post" action="{% url 'panel:billing_run' %}" data-confirm="Выполнить прогон и создать начисления?">
   {% csrf_token %}<button class="btn primary">Выполнить прогон</button>
 </form>
 <a class="btn" href="{% url 'panel:charges' %}">Назад</a>
