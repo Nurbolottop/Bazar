@@ -48,6 +48,7 @@
         {% if pending_claims_count %}<i class="burger-dot"></i>{% endif %}
       </button>
       <div class="topbar-title">Bazar · Рынок</div>
+      <div class="topbar-actions">{% block topbar_actions %}{% endblock %}</div>
       <div class="user">{{ request.user.username }} · <a href="{% url 'panel:logout' %}">Выйти</a></div>
     </div>
     <div class="content">

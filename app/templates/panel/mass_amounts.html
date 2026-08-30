@@ -1,5 +1,9 @@
 {% extends 'panel/base.html' %}
 {% block title %}Суммы аренды{% endblock %}
+{% block topbar_actions %}
+<span class="muted" id="changed-hint"></span>
+<button class="btn primary" form="amounts-form" onclick="return confirmSave()">Сохранить все изменения</button>
+{% endblock %}
 {% block content %}
 <h1>Массовое редактирование сумм</h1>
 <p class="muted">Исправьте суммы перед началом месяца и сохраните одним действием.
@@ -26,8 +30,6 @@
       {% empty %}<tr><td colspan="5" class="muted">Активных привязок мест нет</td></tr>{% endfor %}
     </table>
   </div>
-  <button class="btn primary" onclick="return confirmSave()">Сохранить все изменения</button>
-  <span class="muted" id="changed-hint"></span>
 </form>
 {% endblock %}
 {% block scripts %}

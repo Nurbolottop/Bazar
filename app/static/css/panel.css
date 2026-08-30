@@ -733,3 +733,8 @@ label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 5px
 .form-extra > summary::before { content: '▸ '; }
 .form-extra[open] > summary::before { content: '▾ '; }
 .form-extra > summary:hover { color: var(--accent); }
+
+/* Действия страницы в шапке (рядом с пользователем) */
+.topbar-actions { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+.topbar-actions:empty { display: none; }
+.topbar-actions + .user { margin-left: 14px; }
