@@ -486,12 +486,8 @@
     if (!zoneNode) return;
     const z = zoneNode.getAttr('zmeta');
     if (z.building_id === meta.building_id) return;
-    const ok = await askConfirm(
-      'Место <b>' + meta.code + '</b> стоит в разделе «<b>' + z.name + '</b>», ' +
-      'а числится в «' + (meta.building || 'Без раздела') + '».<br>' +
-      'Перенести его в раздел «' + z.name + '»?',
-      'Перенести');
-    if (!ok) return;
+    // Перенос выполняется автоматически, без подтверждения:
+    // место числится в том разделе, в чьём контуре стоит
     try {
       const result = await api(urlFor(cfg.urls.spotSection, meta.spot_id), 'POST',
         { section_id: z.building_id });
