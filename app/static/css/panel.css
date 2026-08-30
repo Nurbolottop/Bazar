@@ -725,3 +725,11 @@ label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 5px
 .cell-demo.blue { background: #1d4fa1; }
 .cell-demo.yellow { background: #e2b93b; }
 .cell-demo.purple { background: #5b3d8f; }
+
+/* Свёрнутый блок «Дополнительно» в формах */
+.form-extra { margin: 4px 0 14px; }
+.form-extra > summary { cursor: pointer; color: var(--muted); font-size: 13.5px;
+  padding: 8px 0; list-style: none; user-select: none; }
+.form-extra > summary::before { content: '▸ '; }
+.form-extra[open] > summary::before { content: '▾ '; }
+.form-extra > summary:hover { color: var(--accent); }

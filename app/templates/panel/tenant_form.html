@@ -37,12 +37,19 @@
           <option value="ru" {% if tenant.language == 'ru' %}selected{% endif %}>Русский</option>
           <option value="ky" {% if tenant.language == 'ky' %}selected{% endif %}>Кыргызский</option>
         </select></div>
-      <div class="field"><label>Дата начисления (пусто — общая настройка)</label>
-        <input type="number" name="billing_day" min="1" max="31" value="{{ tenant.billing_day|default_if_none:'' }}"></div>
-      <div class="field"><label>Срок оплаты (пусто — общая настройка)</label>
-        <input type="number" name="payment_day" min="1" max="31" value="{{ tenant.payment_day|default_if_none:'' }}"></div>
-      <div class="field"><label>Фотография</label><input type="file" name="photo" accept="image/*"></div>
     </div>
+    <details class="form-extra" {% if tenant.billing_day or tenant.payment_day or tenant.photo %}open{% endif %}>
+      <summary>Дополнительно: индивидуальный график оплаты, фото арендатора</summary>
+      <div class="form-grid" style="margin-top:12px">
+        <div class="field"><label>Дата начисления (пусто — общая настройка)</label>
+          <input type="number" name="billing_day" min="1" max="31" value="{{ tenant.billing_day|default_if_none:'' }}">
+          <div class="hint">Только если этот арендатор платит по своему графику</div></div>
+        <div class="field"><label>Срок оплаты (пусто — общая настройка)</label>
+          <input type="number" name="payment_day" min="1" max="31" value="{{ tenant.payment_day|default_if_none:'' }}"></div>
+        <div class="field"><label>Фотография арендатора (необязательно)</label>
+          <input type="file" name="photo" accept="image/*"></div>
+      </div>
+    </details>
     <div class="field"><label>Примечание</label>
       <textarea name="note">{{ tenant.note|default:'' }}</textarea></div>
     <button class="btn primary">Сохранить</button>
