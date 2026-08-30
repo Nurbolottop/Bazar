@@ -132,6 +132,7 @@ def tenant_detail(request, pk: int):
         'documents': tenant.documents.all(),
         'statuses': Tenant.Status.choices,
         'rental_categories': Tenant.RentalCategory.choices,
+        'rental_terms': Tenant.RentalTerm.choices,
     })
 
 
@@ -149,6 +150,7 @@ def tenant_assign_spot(request, pk: int):
         services.assign_spot(
             tenant=tenant, spot=spot, monthly_amount=amount, actor=request.user,
             rental_category=request.POST.get('rental_category', 'self'),
+            rental_term=request.POST.get('rental_term', 'long'),
             rents_from_market=request.POST.get('rents_from_market') == 'on')
         messages.success(request, f'Место {spot.code} привязано.')
     except ValidationError as exc:

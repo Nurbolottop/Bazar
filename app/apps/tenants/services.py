@@ -16,6 +16,7 @@ from .models import Tenant, TenantSpot
 def assign_spot(*, tenant: Tenant, spot: Spot, monthly_amount: Decimal,
                 start_date: datetime.date | None = None, actor=None,
                 rental_category: str = 'self',
+                rental_term: str = 'long',
                 rents_from_market: bool = False) -> TenantSpot:
     """Привязка места: состояние места автоматически становится «занято» (FR-SP-05).
 
@@ -28,9 +29,12 @@ def assign_spot(*, tenant: Tenant, spot: Spot, monthly_amount: Decimal,
             raise ValidationError(f'Место {spot.code} уже занято другим арендатором.')
         if rental_category not in dict(Tenant.RentalCategory.choices):
             rental_category = Tenant.RentalCategory.SELF
+        if rental_term not in dict(Tenant.RentalTerm.choices):
+            rental_term = Tenant.RentalTerm.LONG
         tenant_spot = TenantSpot.objects.create(
             tenant=tenant, spot=spot, monthly_amount=q2(monthly_amount),
-            rental_category=rental_category, rents_from_market=rents_from_market,
+            rental_category=rental_category, rental_term=rental_term,
+            rents_from_market=rents_from_market,
             start_date=start_date or timezone.localdate())
         spot.status = Spot.Status.OCCUPIED
         spot.save(update_fields=['status', 'updated_at'])
