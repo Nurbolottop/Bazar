@@ -88,9 +88,9 @@
   function setStatus(text, isError) {
     el.status.textContent = text || '';
     el.status.style.color = isError ? 'var(--danger)' : 'var(--muted)';
-    if (text && !isError) setTimeout(() => {
+    setTimeout(() => {
       if (el.status.textContent === text) el.status.textContent = '';
-    }, 2200);
+    }, isError ? 6000 : 2200);
   }
 
   async function api(url, method, body) {
@@ -777,15 +777,23 @@
         });
       } else {
         head.title = 'У раздела пока нет контура на карте';
-        head.addEventListener('click', function () {
-          if (editMode) {
-            // сразу к размещению: модалка создания контура с этим названием
-            el.sectionName.value = name;
-            openModal(el.sectionModal);
-            setTimeout(() => el.sectionName.focus(), 40);
-          } else {
+        head.addEventListener('click', async function () {
+          if (!editMode) {
             setStatus('У раздела «' + name + '» пока нет контура — добавьте его в режиме редактирования', true);
+            return;
           }
+          // контур создаётся сразу — в центре видимой области, и выделяется
+          const scale = stage.scaleX();
+          const width = 500, height = 300;
+          const x = Math.round((stage.width() / 2 - stage.x()) / scale - width / 2);
+          const y = Math.round((stage.height() / 2 - stage.y()) / scale - height / 2);
+          try {
+            const zone = await api(cfg.urls.zoneCreate, 'POST',
+              { name: name, x: x, y: y, width: width, height: height });
+            const node = refreshZoneNode(zone);
+            selectZone(node);
+            setStatus('Контур раздела «' + zone.name + '» добавлен — разместите его');
+          } catch (e) {}
         });
       }
       el.spotList.appendChild(head);
