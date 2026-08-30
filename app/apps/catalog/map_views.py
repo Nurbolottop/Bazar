@@ -53,13 +53,29 @@ def _position_payload(position: MapPosition, debtors: set | None = None) -> dict
         'building_id': spot.building_id if spot else None,
         'tenant': None, 'tenant_id': None, 'has_debt': False,
     }
+    data['category'] = 'free'
+    if spot and spot.status == Spot.Status.REPAIR:
+        data['category'] = 'repair'
     if spot:
         link = next((ts for ts in spot.tenant_spots.all() if ts.is_active), None)
         if link:
-            data['tenant'] = link.tenant.full_name
+            tenant = link.tenant
+            data['tenant'] = tenant.full_name
             data['tenant_id'] = link.tenant_id
-            if debtors is not None:
-                data['has_debt'] = link.tenant_id in debtors
+            has_debt = debtors is not None and link.tenant_id in debtors
+            data['has_debt'] = has_debt
+            # Категория пользователя (цвет на карте):
+            # фиолетовый — аренда напрямую у рынка; синий — субаренда;
+            # жёлтый — оплачено не полностью; зелёный — оплачено, сам ведёт
+            if data['category'] != 'repair':
+                if tenant.rents_from_market:
+                    data['category'] = 'purple'
+                elif tenant.rental_category == 'sublease':
+                    data['category'] = 'blue'
+                elif has_debt:
+                    data['category'] = 'yellow'
+                else:
+                    data['category'] = 'green'
     return data
 
 

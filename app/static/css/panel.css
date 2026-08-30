@@ -441,9 +441,7 @@ label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 5px
   color: var(--muted); flex-wrap: wrap; padding-top: 10px; }
 .map-legend span { display: inline-flex; align-items: center; gap: 6px; }
 .cell-demo { width: 15px; height: 15px; border-radius: 4px; display: inline-block; }
-.cell-demo.free { background: #fff; border: 1.5px solid #5ea98c; }
-.cell-demo.occupied { background: var(--accent); }
-.cell-demo.debt { background: var(--danger); }
+.cell-demo.free { background: #fff; border: 1.5px solid #9aa7a1; }
 .cell-demo.repair { background: #cfd6d2; }
 
 @media (max-width: 900px) {
@@ -628,9 +626,7 @@ label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 5px
   color: var(--muted); flex-wrap: wrap; }
 .map-legend span { display: inline-flex; align-items: center; gap: 6px; }
 .cell-demo { width: 15px; height: 15px; border-radius: 4px; display: inline-block; }
-.cell-demo.free { background: #fff; border: 1.5px solid #5ea98c; }
-.cell-demo.occupied { background: var(--accent); }
-.cell-demo.debt { background: var(--danger); }
+.cell-demo.free { background: #fff; border: 1.5px solid #9aa7a1; }
 .cell-demo.repair { background: #cfd6d2; }
 @media (max-width: 700px) {
   #map-canvas { height: calc(100vh - 300px); min-height: 360px; }
@@ -723,3 +719,9 @@ label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 5px
 .map-info-row span { color: var(--muted); }
 .map-info-actions { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
 .map-info-actions .btn { flex: 1; white-space: nowrap; }
+
+/* Цвета категорий пользователя (легенда карты) */
+.cell-demo.green { background: #0b6e4f; }
+.cell-demo.blue { background: #1d4fa1; }
+.cell-demo.yellow { background: #e2b93b; }
+.cell-demo.purple { background: #5b3d8f; }

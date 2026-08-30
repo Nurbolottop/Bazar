@@ -9,7 +9,10 @@
 <div class="cards">
   <div class="card"><div class="label">ИНН (логин в приложении)</div>
     <div class="value" style="font-size:18px">{{ tenant.inn }}</div>
-    <div class="muted">{{ tenant.phone|default:'' }} {{ tenant.address|default:'' }}</div></div>
+    <div class="muted">{{ tenant.phone|default:'' }} {{ tenant.address|default:'' }}</div>
+    <div class="muted">{{ tenant.get_rental_category_display }}{% if tenant.rents_from_market %} · аренда напрямую у рынка{% endif %}</div>
+    {% if tenant.passport_photo %}<div class="muted">Паспорт: {{ tenant.passport_number }} ·
+      <a href="{{ tenant.passport_photo.url }}" target="_blank" rel="noopener">копия</a></div>{% endif %}</div>
   <div class="card"><div class="label">Долг</div>
     <div class="value danger">{{ balance.debt_amount|default:'0'|money }} сом</div></div>
   {% if balance.advance_amount > 0 %}

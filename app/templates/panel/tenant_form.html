@@ -10,10 +10,26 @@
         <input type="text" name="full_name" value="{{ tenant.full_name|default:'' }}" required style="width:100%"></div>
       <div class="field"><label>ИНН * (для входа в приложение)</label>
         <input type="text" name="inn" value="{{ tenant.inn|default:'' }}" required style="width:100%"></div>
-      <div class="field"><label>Номер паспорта</label>
-        <input type="text" name="passport_number" value="{{ tenant.passport_number|default:'' }}" style="width:100%"></div>
-      <div class="field"><label>Телефон</label>
-        <input type="text" name="phone" value="{{ tenant.phone|default:'' }}" style="width:100%"></div>
+      <div class="field"><label>Номер паспорта *</label>
+        <input type="text" name="passport_number" value="{{ tenant.passport_number|default:'' }}" required style="width:100%"></div>
+      <div class="field"><label>Копия/фото паспорта *</label>
+        {% if tenant.passport_photo %}<div class="muted" style="margin-bottom:4px">
+          Загружено: <a href="{{ tenant.passport_photo.url }}" target="_blank" rel="noopener">открыть</a> —
+          выберите файл, чтобы заменить</div>{% endif %}
+        <input type="file" name="passport_photo" accept="image/*"
+               {% if not tenant.passport_photo %}required{% endif %}></div>
+      <div class="field"><label>Телефон *</label>
+        <input type="text" name="phone" value="{{ tenant.phone|default:'' }}" required style="width:100%"></div>
+      <div class="field"><label>Категория аренды *</label>
+        <select name="rental_category">
+          {% for value, label in rental_categories %}
+          <option value="{{ value }}" {% if tenant.rental_category == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+        <label style="margin-top:8px">
+          <input type="checkbox" name="rents_from_market" {% if tenant.rents_from_market %}checked{% endif %}>
+          Арендует непосредственно у рынка
+        </label></div>
       <div class="field"><label>Адрес</label>
         <input type="text" name="address" value="{{ tenant.address|default:'' }}" style="width:100%"></div>
       <div class="field"><label>Язык уведомлений</label>

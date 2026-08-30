@@ -21,9 +21,20 @@ class Tenant(TimestampedModel):
         RU = 'ru', 'Русский'
         KY = 'ky', 'Кыргызский'
 
+    class RentalCategory(models.TextChoices):
+        SELF = 'self', 'Сам ведёт деятельность'
+        SUBLEASE = 'sublease', 'Сдаёт в субаренду'
+
     full_name = models.CharField('ФИО', max_length=255)
     inn = models.CharField('ИНН', max_length=20, unique=True, db_index=True)
     passport_number = models.CharField('Номер паспорта', max_length=30, blank=True)
+    passport_photo = models.ImageField(
+        'Копия/фото паспорта', upload_to='tenant_docs/', null=True, blank=True)
+    rental_category = models.CharField(
+        'Категория аренды', max_length=10, choices=RentalCategory.choices,
+        default=RentalCategory.SELF)
+    rents_from_market = models.BooleanField(
+        'Арендует непосредственно у рынка', default=False)
     phone = models.CharField('Телефон', max_length=30, blank=True)
     address = models.CharField('Адрес', max_length=255, blank=True)
     photo = models.ImageField('Фотография', upload_to='tenants/', blank=True, null=True)

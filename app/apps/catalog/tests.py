@@ -162,6 +162,7 @@ class MapApiTests(TestCase):
         data = self.client_web.get('/map/api/plan/').json()
         position = data['positions'][0]
         self.assertTrue(position['has_debt'])
+        self.assertEqual(position['category'], 'yellow')  # оплачено не полностью
         self.assertEqual(position['tenant'], tenant.full_name)
 
     def test_section_create(self):
@@ -303,6 +304,29 @@ class MapApiTests(TestCase):
             f'/map/api/spots/{self.spot_a.pk}/section',
             json.dumps({'section_id': 99999}), content_type='application/json')
         self.assertEqual(response.status_code, 400)
+
+    def test_map_categories(self):
+        """Цвет категории: субаренда — синий, напрямую у рынка — фиолетовый,
+        оплачено и сам ведёт — зелёный."""
+        from apps.tenants.models import Tenant
+        from apps.tenants.services import assign_spot
+        from decimal import Decimal
+
+        cases = [
+            ({'rental_category': 'sublease'}, 'M-01', 'blue'),
+            ({'rents_from_market': True}, 'M-02', 'purple'),
+        ]
+        for i, (attrs, code, expected) in enumerate(cases):
+            tenant = Tenant.objects.create(
+                full_name=f'K{i}', inn=f'7000000000000{i}', **attrs)
+            spot = Spot.objects.get(code=code)
+            assign_spot(tenant=tenant, spot=spot, monthly_amount=Decimal('1000'))
+            MapPosition.objects.create(
+                plan=self.plan, spot=spot, x=100 * (i + 1), y=50, width=80, height=50)
+        data = self.client_web.get('/map/api/plan/').json()
+        categories = {p['code']: p['category'] for p in data['positions']}
+        self.assertEqual(categories['M-01'], 'blue')
+        self.assertEqual(categories['M-02'], 'purple')
 
     def test_requires_login(self):
         anonymous = Client()

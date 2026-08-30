@@ -67,12 +67,15 @@
     confirmNo: byId('map-confirm-no'),
   };
 
+  // Категории пользователя (цвета мест на карте)
   const COLORS = {
-    free:     { fill: '#ffffff', stroke: '#5ea98c', text: '#0b6e4f' },
-    occupied: { fill: '#0b6e4f', stroke: '#095c42', text: '#ffffff' },
-    debt:     { fill: '#b42318', stroke: '#8e1b12', text: '#ffffff' },
-    repair:   { fill: '#cfd6d2', stroke: '#aab4ae', text: '#5c6b64' },
-    empty:    { fill: '#f4f6f5', stroke: '#c3ccc7', text: '#8a958f' },
+    free:   { fill: '#ffffff', stroke: '#9aa7a1', text: '#5c6b64' },   // контейнер свободен
+    green:  { fill: '#0b6e4f', stroke: '#095c42', text: '#ffffff' },   // оплачено, сам ведёт
+    blue:   { fill: '#1d4fa1', stroke: '#173f80', text: '#ffffff' },   // субаренда
+    yellow: { fill: '#e2b93b', stroke: '#b8922a', text: '#3d3208' },   // оплачено не полностью
+    purple: { fill: '#5b3d8f', stroke: '#472f70', text: '#ffffff' },   // аренда напрямую у рынка
+    repair: { fill: '#cfd6d2', stroke: '#aab4ae', text: '#5c6b64' },   // на ремонте
+    empty:  { fill: '#f4f6f5', stroke: '#c3ccc7', text: '#8a958f' },   // пустая позиция
   };
   const HIGHLIGHT = '#1d4fa1';
 
@@ -123,10 +126,7 @@
   // ================================================================ сцена
   function colorFor(p) {
     if (!p.spot_id) return COLORS.empty;
-    if (p.status === 'repair') return COLORS.repair;
-    if (p.has_debt) return COLORS.debt;
-    if (p.status === 'occupied') return COLORS.occupied;
-    return COLORS.free;
+    return COLORS[p.category] || COLORS.free;
   }
 
   function buildStage() {
@@ -389,9 +389,14 @@
   }
   function statusText(p) {
     if (!p.spot_id) return 'пустая позиция';
-    if (p.status === 'repair') return 'на ремонте';
-    if (p.status === 'occupied') return p.has_debt ? 'занято · есть долг' : 'занято';
-    return 'свободно';
+    switch (p.category) {
+      case 'repair': return 'на ремонте';
+      case 'green': return 'занято · оплачено, сам ведёт деятельность';
+      case 'blue': return 'занято · сдаёт в субаренду';
+      case 'yellow': return 'занято · оплачено не полностью';
+      case 'purple': return 'аренда напрямую у рынка';
+      default: return 'свободно';
+    }
   }
   function moveTooltip(e) {
     el.tooltip.style.left = (e.evt.offsetX + 14) + 'px';
