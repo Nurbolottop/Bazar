@@ -206,7 +206,7 @@ def mass_amounts(request):
         changed = 0
         errors = []
         with transaction.atomic():
-            for tenant_spot in rows.select_for_update():
+            for tenant_spot in rows.select_for_update(of=('self',)):
                 raw = request.POST.get(f'amount_{tenant_spot.pk}')
                 if raw is None:
                     continue
