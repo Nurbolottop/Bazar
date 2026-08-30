@@ -20,16 +20,6 @@
                {% if not tenant.passport_photo %}required{% endif %}></div>
       <div class="field"><label>Телефон *</label>
         <input type="text" name="phone" value="{{ tenant.phone|default:'' }}" required style="width:100%"></div>
-      <div class="field"><label>Категория аренды *</label>
-        <select name="rental_category">
-          {% for value, label in rental_categories %}
-          <option value="{{ value }}" {% if tenant.rental_category == value %}selected{% endif %}>{{ label }}</option>
-          {% endfor %}
-        </select>
-        <label style="margin-top:8px">
-          <input type="checkbox" name="rents_from_market" {% if tenant.rents_from_market %}checked{% endif %}>
-          Арендует непосредственно у рынка
-        </label></div>
       <div class="field"><label>Адрес</label>
         <input type="text" name="address" value="{{ tenant.address|default:'' }}" style="width:100%"></div>
       <div class="field"><label>Язык уведомлений</label>

@@ -14,14 +14,23 @@ from .models import Tenant, TenantSpot
 
 
 def assign_spot(*, tenant: Tenant, spot: Spot, monthly_amount: Decimal,
-                start_date: datetime.date | None = None, actor=None) -> TenantSpot:
-    """Привязка места: состояние места автоматически становится «занято» (FR-SP-05)."""
+                start_date: datetime.date | None = None, actor=None,
+                rental_category: str = 'self',
+                rents_from_market: bool = False) -> TenantSpot:
+    """Привязка места: состояние места автоматически становится «занято» (FR-SP-05).
+
+    Категория аренды и признак «арендует у рынка» задаются на привязке:
+    один арендатор может один контейнер вести сам, другой — пересдавать.
+    """
     with transaction.atomic():
         spot = Spot.objects.select_for_update().get(pk=spot.pk)
         if TenantSpot.objects.filter(spot=spot, is_active=True).exists():
             raise ValidationError(f'Место {spot.code} уже занято другим арендатором.')
+        if rental_category not in dict(Tenant.RentalCategory.choices):
+            rental_category = Tenant.RentalCategory.SELF
         tenant_spot = TenantSpot.objects.create(
             tenant=tenant, spot=spot, monthly_amount=q2(monthly_amount),
+            rental_category=rental_category, rents_from_market=rents_from_market,
             start_date=start_date or timezone.localdate())
         spot.status = Spot.Status.OCCUPIED
         spot.save(update_fields=['status', 'updated_at'])

@@ -10,7 +10,6 @@
   <div class="card"><div class="label">ИНН (логин в приложении)</div>
     <div class="value" style="font-size:18px">{{ tenant.inn }}</div>
     <div class="muted">{{ tenant.phone|default:'' }} {{ tenant.address|default:'' }}</div>
-    <div class="muted">{{ tenant.get_rental_category_display }}{% if tenant.rents_from_market %} · аренда напрямую у рынка{% endif %}</div>
     {% if tenant.passport_photo %}<div class="muted">Паспорт: {{ tenant.passport_number }} ·
       <a href="{{ tenant.passport_photo.url }}" target="_blank" rel="noopener">копия</a></div>{% endif %}</div>
   <div class="card"><div class="label">Долг</div>
@@ -72,12 +71,13 @@
 <div class="panel">
   <h2 style="margin-top:0">Торговые места</h2>
   <table>
-    <tr><th>Место</th><th>Корпус</th><th class="num">Сумма/мес</th><th>С</th><th>По</th><th></th></tr>
+    <tr><th>Место</th><th>Корпус</th><th class="num">Сумма/мес</th><th>Категория</th><th>С</th><th>По</th><th></th></tr>
     {% for ts in tenant_spots %}
     <tr {% if not ts.is_active %}style="opacity:.5"{% endif %}>
       <td>{{ ts.spot.code }}</td>
       <td>{{ ts.spot.building.name }}</td>
       <td class="num mono">{{ ts.monthly_amount|money }}</td>
+      <td class="muted" data-label="Категория">{{ ts.get_rental_category_display }}{% if ts.rents_from_market %} · у рынка{% endif %}</td>
       <td>{{ ts.start_date|date:'d.m.Y' }}</td>
       <td>{{ ts.end_date|date:'d.m.Y'|default:'—' }}</td>
       <td>{% if ts.is_active %}
@@ -86,7 +86,7 @@
         </form>
       {% endif %}</td>
     </tr>
-    {% empty %}<tr><td colspan="6" class="muted">Мест нет</td></tr>{% endfor %}
+    {% empty %}<tr><td colspan="7" class="muted">Мест нет</td></tr>{% endfor %}
   </table>
   <form method="post" action="{% url 'panel:tenant_assign_spot' tenant.pk %}" style="margin-top:12px">
     {% csrf_token %}
@@ -95,6 +95,13 @@
       {% for spot in free_spots %}<option value="{{ spot.pk }}">{{ spot.code }} ({{ spot.building.name }})</option>{% endfor %}
     </select>
     <input type="text" name="monthly_amount" placeholder="Сумма аренды/мес" class="amount-input" required>
+    <select name="rental_category" title="Категория аренды">
+      {% for value, label in rental_categories %}
+      <option value="{{ value }}">{{ label }}</option>
+      {% endfor %}
+    </select>
+    <label class="inline-check"><input type="checkbox" name="rents_from_market">
+      Арендует непосредственно у рынка</label>
     <button class="btn primary small">Привязать место</button>
   </form>
 </div>

@@ -30,11 +30,6 @@ class Tenant(TimestampedModel):
     passport_number = models.CharField('Номер паспорта', max_length=30, blank=True)
     passport_photo = models.ImageField(
         'Копия/фото паспорта', upload_to='tenant_docs/', null=True, blank=True)
-    rental_category = models.CharField(
-        'Категория аренды', max_length=10, choices=RentalCategory.choices,
-        default=RentalCategory.SELF)
-    rents_from_market = models.BooleanField(
-        'Арендует непосредственно у рынка', default=False)
     phone = models.CharField('Телефон', max_length=30, blank=True)
     address = models.CharField('Адрес', max_length=255, blank=True)
     photo = models.ImageField('Фотография', upload_to='tenants/', blank=True, null=True)
@@ -97,6 +92,11 @@ class TenantSpot(TimestampedModel):
     spot = models.ForeignKey(
         Spot, verbose_name='Место', on_delete=models.PROTECT, related_name='tenant_spots')
     monthly_amount = MoneyField('Сумма аренды в месяц')
+    rental_category = models.CharField(
+        'Категория аренды', max_length=10, choices=Tenant.RentalCategory.choices,
+        default=Tenant.RentalCategory.SELF)
+    rents_from_market = models.BooleanField(
+        'Арендует непосредственно у рынка', default=False)
     start_date = models.DateField('Дата начала')
     end_date = models.DateField('Дата окончания', null=True, blank=True)
     is_active = models.BooleanField('Действует', default=True)

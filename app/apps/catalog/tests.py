@@ -318,9 +318,10 @@ class MapApiTests(TestCase):
         ]
         for i, (attrs, code, expected) in enumerate(cases):
             tenant = Tenant.objects.create(
-                full_name=f'K{i}', inn=f'7000000000000{i}', **attrs)
+                full_name=f'K{i}', inn=f'7000000000000{i}')
             spot = Spot.objects.get(code=code)
-            assign_spot(tenant=tenant, spot=spot, monthly_amount=Decimal('1000'))
+            assign_spot(tenant=tenant, spot=spot,
+                        monthly_amount=Decimal('1000'), **attrs)
             MapPosition.objects.create(
                 plan=self.plan, spot=spot, x=100 * (i + 1), y=50, width=80, height=50)
         data = self.client_web.get('/map/api/plan/').json()

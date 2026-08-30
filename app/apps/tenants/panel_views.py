@@ -73,10 +73,6 @@ def tenant_form(request, pk: int | None = None):
         target.payment_day = int(payment_day) if payment_day.isdigit() else None
         if language in dict(Tenant.Language.choices):
             target.language = language
-        rental_category = request.POST.get('rental_category', '')
-        if rental_category in dict(Tenant.RentalCategory.choices):
-            target.rental_category = rental_category
-        target.rents_from_market = request.POST.get('rents_from_market') == 'on'
         if request.FILES.get('photo'):
             target.photo = request.FILES['photo']
         if request.FILES.get('passport_photo'):
@@ -93,8 +89,7 @@ def tenant_form(request, pk: int | None = None):
         if required_errors:
             messages.error(request, 'Заполните обязательные поля: ' + ', '.join(required_errors) + '.')
             return render(request, 'panel/tenant_form.html', {
-                'tenant': target, 'is_new': tenant is None,
-                'rental_categories': Tenant.RentalCategory.choices})
+                'tenant': target, 'is_new': tenant is None})
         try:
             target.full_clean()
         except ValidationError as exc:
@@ -102,8 +97,7 @@ def tenant_form(request, pk: int | None = None):
                 f'{field}: {", ".join(errs)}' for field, errs in exc.message_dict.items())
             messages.error(request, error_text)
             return render(request, 'panel/tenant_form.html', {
-                'tenant': target, 'is_new': tenant is None,
-                'rental_categories': Tenant.RentalCategory.choices})
+                'tenant': target, 'is_new': tenant is None})
         target.save()
         # Учётная запись создаётся автоматически: вход по ИНН (FR-TN-02)
         audit(action='tenant_update' if tenant else 'tenant_create',
@@ -112,8 +106,7 @@ def tenant_form(request, pk: int | None = None):
         messages.success(request, 'Карточка сохранена. Арендатор может войти в приложение по ИНН.')
         return redirect('panel:tenant_detail', pk=target.pk)
     return render(request, 'panel/tenant_form.html', {
-        'tenant': tenant, 'is_new': tenant is None,
-        'rental_categories': Tenant.RentalCategory.choices})
+        'tenant': tenant, 'is_new': tenant is None})
 
 
 @admin_required
@@ -138,6 +131,7 @@ def tenant_detail(request, pk: int):
         'adjustments': adjustments, 'free_spots': free_spots,
         'documents': tenant.documents.all(),
         'statuses': Tenant.Status.choices,
+        'rental_categories': Tenant.RentalCategory.choices,
     })
 
 
@@ -152,8 +146,10 @@ def tenant_assign_spot(request, pk: int):
         messages.error(request, 'Неверный формат суммы аренды.')
         return redirect('panel:tenant_detail', pk=pk)
     try:
-        services.assign_spot(tenant=tenant, spot=spot, monthly_amount=amount,
-                             actor=request.user)
+        services.assign_spot(
+            tenant=tenant, spot=spot, monthly_amount=amount, actor=request.user,
+            rental_category=request.POST.get('rental_category', 'self'),
+            rents_from_market=request.POST.get('rents_from_market') == 'on')
         messages.success(request, f'Место {spot.code} привязано.')
     except ValidationError as exc:
         messages.error(request, '; '.join(exc.messages))

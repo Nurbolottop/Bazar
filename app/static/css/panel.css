@@ -759,3 +759,6 @@ label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 5px
 .pmodal-actions { display: flex; gap: 8px; justify-content: flex-end; }
 .pmodal-ok.danger-solid { background: var(--danger); border-color: var(--danger); }
 .pmodal-ok.danger-solid:hover { background: #96190f; }
+
+.inline-check { display: inline-flex; align-items: center; gap: 6px;
+  font-size: 13px; color: var(--muted); margin: 0; }

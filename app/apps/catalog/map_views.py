@@ -68,9 +68,9 @@ def _position_payload(position: MapPosition, debtors: set | None = None) -> dict
             # фиолетовый — аренда напрямую у рынка; синий — субаренда;
             # жёлтый — оплачено не полностью; зелёный — оплачено, сам ведёт
             if data['category'] != 'repair':
-                if tenant.rents_from_market:
+                if link.rents_from_market:
                     data['category'] = 'purple'
-                elif tenant.rental_category == 'sublease':
+                elif link.rental_category == 'sublease':
                     data['category'] = 'blue'
                 elif has_debt:
                     data['category'] = 'yellow'
