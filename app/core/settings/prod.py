@@ -2,6 +2,13 @@ from core.settings.base import *
 
 DEBUG = False
 
+# Версионирование статики: имя файла содержит хэш содержимого, поэтому после
+# деплоя браузеры сами скачивают новые CSS/JS — жёсткое обновление не нужно
+STORAGES = {
+    'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+    'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.ManifestStaticFilesStorage'},
+}
+
 # Cookies только по HTTPS. COOKIES_SECURE=0 — временное исключение на период,
 # пока домен и сертификат не выпущены (доступ по IP без TLS); после включения
 # HTTPS переменная удаляется из .env и куки снова только Secure.
