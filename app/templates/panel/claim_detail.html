@@ -17,7 +17,7 @@
   <div class="card">
     <div class="label">Текущий долг арендатора</div>
     <div class="value danger">{{ balance.debt_amount|default:'0'|money }} сом</div>
-    <div class="muted">Аванс: {{ balance.advance_amount|default:'0'|money }} сом</div>
+    {% if balance.advance_amount > 0 %}<div class="muted">Аванс: {{ balance.advance_amount|money }} сом</div>{% endif %}
   </div>
 </div>
 

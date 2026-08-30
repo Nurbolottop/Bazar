@@ -12,8 +12,11 @@
     <div class="muted">{{ tenant.phone|default:'' }} {{ tenant.address|default:'' }}</div></div>
   <div class="card"><div class="label">Долг</div>
     <div class="value danger">{{ balance.debt_amount|default:'0'|money }} сом</div></div>
-  <div class="card"><div class="label">Аванс</div>
-    <div class="value">{{ balance.advance_amount|default:'0'|money }} сом</div></div>
+  {% if balance.advance_amount > 0 %}
+  <div class="card"><div class="label">Аванс (переплата)</div>
+    <div class="value">{{ balance.advance_amount|money }} сом</div>
+    <div class="muted">Зачтётся в следующее начисление</div></div>
+  {% endif %}
   <div class="card"><div class="label">Согласие на обработку ПДн</div>
     <div>{% if tenant.consent_accepted_at %}принято {{ tenant.consent_accepted_at|date:'d.m.Y' }}
       (версия {{ tenant.consent_version }}){% else %}<span class="muted">ещё не принято</span>{% endif %}</div>
