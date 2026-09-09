@@ -56,9 +56,9 @@ class SystemSettings(TimestampedModel):
         'Минимальная версия приложения', max_length=20, blank=True,
         help_text='Отдаётся в GET /app/config')
     faq_ru = models.TextField(
-        'Частые вопросы (рус.)', blank=True,
+        'Частые вопросы (рус.)', blank=True, default='',
         help_text='Первая строка блока — вопрос, дальше ответ; блоки через пустую строку')
-    faq_ky = models.TextField('Частые вопросы (кырг.)', blank=True)
+    faq_ky = models.TextField('Частые вопросы (кырг.)', blank=True, default='')
 
     def faq_items(self, lang: str = 'ru') -> list[dict]:
         """Разбор текста FAQ в список для GET /app/faq (ТЗ-01 §3.1)."""
