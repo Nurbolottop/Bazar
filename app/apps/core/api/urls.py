@@ -11,7 +11,7 @@ from apps.tenants.api import (
     MySpotDetailView, MySpotsView, ProfileView, SettingsView, SummaryView,
 )
 
-from .views import AppConfigView, PaymentInfoView
+from .views import AppConfigView, FaqView, PaymentInfoView
 
 urlpatterns = [
     path('auth/login', LoginView.as_view()),
@@ -33,4 +33,5 @@ urlpatterns = [
     path('payment-claims', ClaimCreateView.as_view()),
     path('payment-claims/<int:pk>/withdraw', ClaimWithdrawView.as_view()),
     path('app/config', AppConfigView.as_view()),
+    path('app/faq', FaqView.as_view()),
 ]

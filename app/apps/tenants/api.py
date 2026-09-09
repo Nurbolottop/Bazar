@@ -63,8 +63,17 @@ class SummaryView(APIView):
         has_pending_claim = tenant.claims.filter(
             status=PaymentClaim.Status.PENDING).exists()
 
+        # «Оплачено X из Y» по текущему периоду (ТЗ-01 §5.1)
+        period_charges = tenant.charges.filter(
+            period_year=today.year, period_month=today.month,
+        ).exclude(status=Charge.Status.CANCELLED)
+        total_charged = sum((c.amount for c in period_charges), ZERO)
+        paid_amount = sum((c.paid_amount for c in period_charges), ZERO)
+
         return Response({
             'debt': str(balance.debt_amount),
+            'paid_amount': str(paid_amount),
+            'total_charged': str(total_charged),
             'overdue_amount': str(overdue_amount),
             'advance': str(balance.advance_amount),
             'amount_due': str(balance.debt_amount),
@@ -83,14 +92,54 @@ class SpotSerializer(serializers.ModelSerializer):
     area_sqm = serializers.DecimalField(
         source='spot.area_sqm', max_digits=8, decimal_places=2)
     photo = serializers.ImageField(source='spot.photo')
+    payment_status = serializers.SerializerMethodField()
+    debt = serializers.SerializerMethodField()
+    next_due_date = serializers.SerializerMethodField()
 
     class Meta:
         model = TenantSpot
         fields = ['id', 'code', 'building', 'spot_type', 'area_sqm',
-                  'monthly_amount', 'start_date', 'photo']
+                  'monthly_amount', 'start_date', 'photo',
+                  'payment_status', 'debt', 'next_due_date']
 
     def get_building(self, obj) -> str:
         return obj.spot.building.name if obj.spot.building_id else ''
+
+    def _pay_state(self, obj) -> dict:
+        """Состояние оплаты по месту (ТЗ-01 §5.2) — словарь тот же, что в /me/summary."""
+        state = getattr(obj, '_pay_state_cache', None)
+        if state is not None:
+            return state
+        today = timezone.localdate()
+        open_charges = [
+            c for c in obj.charges.all()
+            if c.status not in (Charge.Status.CANCELLED, Charge.Status.PAID)]
+        debt = sum((c.remaining for c in open_charges), ZERO)
+        has_overdue = any(
+            c.status == Charge.Status.OVERDUE and c.remaining > ZERO for c in open_charges)
+        future_due = sorted(c.due_date for c in open_charges if c.due_date >= today)
+        next_due = future_due[0] if future_due else None
+        if debt <= ZERO:
+            payment_status = 'no_debt'
+        elif has_overdue:
+            payment_status = 'overdue'
+        elif next_due is not None and (next_due - today).days <= 3:
+            payment_status = 'due_soon'
+        else:
+            payment_status = 'awaiting'
+        state = {'payment_status': payment_status, 'debt': str(debt),
+                 'next_due_date': next_due}
+        obj._pay_state_cache = state
+        return state
+
+    def get_payment_status(self, obj) -> str:
+        return self._pay_state(obj)['payment_status']
+
+    def get_debt(self, obj) -> str:
+        return self._pay_state(obj)['debt']
+
+    def get_next_due_date(self, obj):
+        return self._pay_state(obj)['next_due_date']
 
 
 class MySpotsView(APIView):
@@ -99,7 +148,7 @@ class MySpotsView(APIView):
     def get(self, request):
         queryset = TenantSpot.objects.filter(
             tenant=request.user, is_active=True,
-        ).select_related('spot', 'spot__building')
+        ).select_related('spot', 'spot__building').prefetch_related('charges')
         return Response(SpotSerializer(queryset, many=True, context={'request': request}).data)
 
 

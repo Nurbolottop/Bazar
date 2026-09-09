@@ -99,10 +99,17 @@ class ClaimWithdrawView(APIView):
         return Response(ClaimSerializer(claim).data)
 
 
+def payment_public_status(payment: Payment) -> str:
+    """Статус платежа в словаре ТЗ-01 §6.4: active → confirmed, reversed → cancelled."""
+    return 'confirmed' if payment.status == Payment.Status.ACTIVE else 'cancelled'
+
+
 class HistoryView(APIView):
     """GET /api/v1/me/payments — история заявок, платежей и корректировок.
 
     Каждая запись содержит тип: claim, payment или adjustment (ТЗ-02 п. 6.2).
+    Статусы — единый словарь ТЗ-01 §6.4:
+    pending / confirmed / rejected / withdrawn / cancelled.
     """
 
     def get(self, request):
@@ -115,7 +122,7 @@ class HistoryView(APIView):
                 'date': claim.submitted_at,
                 'amount': str(claim.declared_amount),
                 'status': claim.status,
-                'reject_reason': claim.reject_reason,
+                'reason': claim.reject_reason or None,
                 'comment': claim.comment,
             })
         for payment in tenant.payments.filter(source=Payment.Source.MANUAL):
@@ -124,7 +131,8 @@ class HistoryView(APIView):
                 'type': 'payment',
                 'date': payment.paid_at,
                 'amount': str(payment.amount),
-                'status': payment.status,
+                'status': payment_public_status(payment),
+                'reason': payment.reversed_reason or None,
                 'comment': payment.comment or 'Внесён администрацией',
             })
         # Корректировки долга отображаются арендатору отдельной строкой (FR-PM-15)
@@ -156,18 +164,27 @@ class HistoryDetailView(APIView):
 
         if kind == 'claim':
             claim = self._get_or_404(PaymentClaim, pk, tenant)
-            data = ClaimSerializer(claim).data
-            data['type'] = 'claim'
-            data['receipt_url'] = f'/api/v1/me/receipts/{claim.pk}'
             payment = claim.payments.filter(status=Payment.Status.ACTIVE).first()
-            data['accepted_amount'] = str(payment.amount) if payment else None
-            return Response(data)
+            return Response({
+                'id': f'claim-{claim.pk}',
+                'type': 'claim',
+                'status': claim.status,
+                'declared_amount': str(claim.declared_amount),
+                'accepted_amount': str(payment.amount) if payment else None,
+                'receipt_url': f'/api/v1/me/receipts/{claim.pk}',
+                'submitted_at': claim.submitted_at,
+                'processed_at': claim.reviewed_at,
+                'reason': claim.reject_reason or None,
+                'comment': claim.comment,
+            })
         if kind == 'payment':
             payment = self._get_or_404(Payment, pk, tenant)
             data = {
                 'id': f'payment-{payment.pk}', 'type': 'payment',
-                'amount': str(payment.amount), 'status': payment.status,
-                'paid_at': payment.paid_at, 'source': payment.source,
+                'status': payment_public_status(payment),
+                'amount': str(payment.amount),
+                'date': payment.paid_at, 'source': payment.source,
+                'reason': payment.reversed_reason or None,
                 'comment': payment.comment,
             }
             if payment.claim_id:

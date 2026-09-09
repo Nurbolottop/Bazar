@@ -27,6 +27,21 @@ class PaymentInfoView(APIView):
         })
 
 
+class FaqView(APIView):
+    """GET /api/v1/app/faq — частые вопросы для экрана «Помощь» (ТЗ-01 §3.1).
+
+    Без токена, язык — по заголовку Accept-Language: ru|ky.
+    """
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        s = SystemSettings.load()
+        lang = 'ky' if request.headers.get('Accept-Language', '').lower().startswith('ky') \
+            else 'ru'
+        return Response(s.faq_items(lang))
+
+
 class AppConfigView(APIView):
     """GET /api/v1/app/config — конфигурация приложения. Доступна без токена."""
     authentication_classes = []

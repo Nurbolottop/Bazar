@@ -55,6 +55,20 @@ class SystemSettings(TimestampedModel):
     min_app_version = models.CharField(
         'Минимальная версия приложения', max_length=20, blank=True,
         help_text='Отдаётся в GET /app/config')
+    faq_ru = models.TextField(
+        'Частые вопросы (рус.)', blank=True,
+        help_text='Первая строка блока — вопрос, дальше ответ; блоки через пустую строку')
+    faq_ky = models.TextField('Частые вопросы (кырг.)', blank=True)
+
+    def faq_items(self, lang: str = 'ru') -> list[dict]:
+        """Разбор текста FAQ в список для GET /app/faq (ТЗ-01 §3.1)."""
+        text = self.faq_ky if lang == 'ky' and self.faq_ky.strip() else self.faq_ru
+        items = []
+        for block in text.replace('\r\n', '\n').split('\n\n'):
+            lines = [line.strip() for line in block.strip().split('\n') if line.strip()]
+            if len(lines) >= 2:
+                items.append({'question': lines[0], 'answer': '\n'.join(lines[1:])})
+        return items
 
     class Meta:
         verbose_name = 'Настройки системы'

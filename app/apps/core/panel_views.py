@@ -92,6 +92,8 @@ def settings_view(request):
         s.payment_instruction_ru = request.POST.get('payment_instruction_ru', '')
         s.payment_instruction_ky = request.POST.get('payment_instruction_ky', '')
         s.min_app_version = request.POST.get('min_app_version', '')
+        s.faq_ru = request.POST.get('faq_ru', '')
+        s.faq_ky = request.POST.get('faq_ky', '')
         s.consent_version = request.POST.get('consent_version', s.consent_version)
         s.pin_login_enabled = request.POST.get('pin_login_enabled') == 'on'
         try:

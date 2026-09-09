@@ -35,9 +35,28 @@ class AllocationSerializer(serializers.ModelSerializer):
 
 
 class MyChargesView(APIView):
-    """GET /api/v1/me/charges — начисления с фильтрами: месяц, место, статус, страница."""
+    """GET /api/v1/me/charges — начисления с фильтрами: месяц, место, статус, страница.
+
+    Неизвестный параметр или неверное значение фильтра — 400, а не тихое
+    игнорирование: отброшенный фильтр выглядит как рабочий экран с чужими данными.
+    """
+
+    ALLOWED_PARAMS = {'period', 'spot', 'status', 'page', 'page_size'}
+
+    @staticmethod
+    def _bad_request(field: str, message: str):
+        return Response(
+            {'code': 'validation_error', 'message': message, 'details': {field: [message]}},
+            status=400)
 
     def get(self, request):
+        unknown = set(request.query_params.keys()) - self.ALLOWED_PARAMS
+        if unknown:
+            names = ', '.join(sorted(unknown))
+            return self._bad_request(
+                'query', f'Неизвестный параметр фильтра: {names}. '
+                         f'Допустимы: {", ".join(sorted(self.ALLOWED_PARAMS))}.')
+
         queryset = Charge.objects.filter(tenant=request.user) \
             .select_related('tenant_spot__spot').order_by('-due_date', '-id')
 
@@ -47,12 +66,18 @@ class MyChargesView(APIView):
                 year, month = period.split('-')
                 queryset = queryset.filter(period_year=int(year), period_month=int(month))
             except (ValueError, TypeError):
-                pass
+                return self._bad_request('period', 'Формат периода — YYYY-MM.')
         spot_id = request.query_params.get('spot')
-        if spot_id and spot_id.isdigit():
+        if spot_id:
+            if not spot_id.isdigit():
+                return self._bad_request('spot', 'Параметр spot — числовой id места.')
             queryset = queryset.filter(tenant_spot__spot_id=int(spot_id))
         status_filter = request.query_params.get('status')
-        if status_filter in dict(Charge.Status.choices):
+        if status_filter:
+            if status_filter not in dict(Charge.Status.choices):
+                allowed = ', '.join(dict(Charge.Status.choices))
+                return self._bad_request(
+                    'status', f'Неизвестный статус «{status_filter}». Допустимы: {allowed}.')
             queryset = queryset.filter(status=status_filter)
 
         paginator = DefaultPagination()

@@ -148,3 +148,106 @@ class ApiAccessTests(TestCase):
     def test_unauthenticated_401(self):
         response = APIClient().get('/api/v1/me/summary')
         self.assertEqual(response.status_code, 401)
+
+
+@override_settings(MEDIA_ROOT=TMP_MEDIA)
+class MobileApiContractTests(TestCase):
+    """Контракт API под ТЗ-01: словарь статусов, состояние оплаты мест, строгие фильтры."""
+
+    def setUp(self):
+        self.tenant, self.tenant_spot = make_tenant_with_spot(
+            '12000.00', inn='66666666666666')
+        run_billing(today=datetime.date(2026, 3, 1))
+        _, key = services.tenant_login(inn='66666666666666')
+        self.client_api = APIClient()
+        self.client_api.credentials(HTTP_AUTHORIZATION=f'Token {key}')
+
+    def test_charges_unknown_param_400(self):
+        response = self.client_api.get('/api/v1/me/charges?place_id=2')
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.data['code'], 'validation_error')
+        self.assertIn('place_id', response.data['message'])
+
+    def test_charges_unknown_status_400(self):
+        response = self.client_api.get('/api/v1/me/charges?status=canceled')
+        self.assertEqual(response.status_code, 400)
+        response = self.client_api.get('/api/v1/me/charges?status=cancelled')
+        self.assertEqual(response.status_code, 200)
+
+    def test_charges_bad_period_and_spot_400(self):
+        self.assertEqual(
+            self.client_api.get('/api/v1/me/charges?period=march').status_code, 400)
+        self.assertEqual(
+            self.client_api.get('/api/v1/me/charges?spot=abc').status_code, 400)
+        response = self.client_api.get(
+            f'/api/v1/me/charges?spot={self.tenant_spot.spot_id}')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['count'], 1)
+
+    def test_claim_detail_unified_schema(self):
+        create = self.client_api.post('/api/v1/payment-claims', {
+            'declared_amount': '5000.00',
+            'receipt_image': png_upload(),
+            'idempotency_key': 'contract-claim-1',
+        }, format='multipart')
+        claim_id = create.data['id']
+        response = self.client_api.get(f'/api/v1/me/payments/claim-{claim_id}')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['status'], 'pending')
+        self.assertEqual(response.data['declared_amount'], '5000.00')
+        self.assertIsNone(response.data['accepted_amount'])
+        self.assertIsNone(response.data['processed_at'])
+        self.assertIsNone(response.data['reason'])
+        self.assertEqual(response.data['receipt_url'], f'/api/v1/me/receipts/{claim_id}')
+
+    def test_payment_status_confirmed_and_cancelled(self):
+        from apps.payments.services import create_manual_payment, reverse_payment
+
+        payment = create_manual_payment(
+            tenant=self.tenant, amount=Decimal('1000.00'), actor=None)
+        response = self.client_api.get(f'/api/v1/me/payments/payment-{payment.pk}')
+        self.assertEqual(response.data['status'], 'confirmed')
+        self.assertIn('date', response.data)
+        self.assertIsNone(response.data['reason'])
+
+        from apps.core.testutils import make_admin
+        reverse_payment(payment=payment, actor=make_admin('rev'), reason='Ошибка кассира')
+        response = self.client_api.get(f'/api/v1/me/payments/payment-{payment.pk}')
+        self.assertEqual(response.data['status'], 'cancelled')
+        self.assertEqual(response.data['reason'], 'Ошибка кассира')
+
+    def test_spots_payment_state(self):
+        response = self.client_api.get('/api/v1/me/spots')
+        self.assertEqual(response.status_code, 200)
+        item = response.data[0]
+        self.assertEqual(item['debt'], '12000.00')
+        self.assertIn(item['payment_status'], ['awaiting', 'due_soon', 'overdue'])
+        # после полной оплаты долг по месту исчезает
+        from apps.payments.services import create_manual_payment
+        create_manual_payment(tenant=self.tenant, amount=Decimal('12000.00'), actor=None)
+        item = self.client_api.get('/api/v1/me/spots').data[0]
+        self.assertEqual(item['payment_status'], 'no_debt')
+        self.assertEqual(item['debt'], '0.00')
+
+    def test_summary_paid_of_total(self):
+        response = self.client_api.get('/api/v1/me/summary')
+        self.assertIn('paid_amount', response.data)
+        self.assertIn('total_charged', response.data)
+
+    def test_faq_endpoint(self):
+        from apps.core.models import SystemSettings
+
+        response = APIClient().get('/api/v1/app/faq')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data, [])
+
+        s = SystemSettings.load()
+        s.faq_ru = 'Вопрос один?\nОтвет один.\nВторая строка ответа.\n\nВопрос два?\nОтвет два.'
+        s.faq_ky = 'Суроо?\nЖооп.'
+        s.save()
+        response = APIClient().get('/api/v1/app/faq')
+        self.assertEqual(len(response.data), 2)
+        self.assertEqual(response.data[0]['question'], 'Вопрос один?')
+        self.assertEqual(response.data[0]['answer'], 'Ответ один.\nВторая строка ответа.')
+        response = APIClient().get('/api/v1/app/faq', HTTP_ACCEPT_LANGUAGE='ky')
+        self.assertEqual(response.data[0]['question'], 'Суроо?')
