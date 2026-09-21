@@ -205,6 +205,9 @@ SPECTACULAR_SETTINGS = {
 
 # Вход арендатора: не более 10 попыток с одного IP или устройства в час (ТЗ-00 п. 8.1)
 TENANT_LOGIN_MAX_ATTEMPTS_PER_HOUR = 10
+# Страховка от перебора ИНН с одного адреса; выше лимита устройства,
+# чтобы офисный NAT или сеть ревью Apple не блокировали всех сразу
+TENANT_LOGIN_MAX_ATTEMPTS_PER_IP_HOUR = 100
 # Вход администратора: блокировка на 15 минут после 5 неудачных попыток (ТЗ-02 п. 7.2)
 ADMIN_LOGIN_MAX_ATTEMPTS = 5
 ADMIN_LOGIN_LOCKOUT_MINUTES = 15

@@ -35,15 +35,20 @@ class LoginView(APIView):
         serializer = LoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
+        # Устройство: заголовок X-Device-Id приоритетнее поля тела —
+        # лимит попыток считается на устройство, а не на IP (NAT-safe)
+        device_info = (request.headers.get('X-Device-Id') or '').strip()[:512] \
+            or data['device_info']
         try:
             tenant, raw_key = services.tenant_login(
-                inn=data['inn'], device_info=data['device_info'],
+                inn=data['inn'], device_info=device_info,
                 ip=client_ip(request), consent_accepted=data['consent_accepted'],
                 pin=data['pin'])
         except services.LoginRateLimited as exc:
             return Response(
                 {'code': 'throttled', 'message': exc.message, 'details': {}},
-                status=status.HTTP_429_TOO_MANY_REQUESTS)
+                status=status.HTTP_429_TOO_MANY_REQUESTS,
+                headers={'Retry-After': str(exc.retry_after)})
         except services.PinRequired as exc:
             return Response(
                 {'code': 'pin_required', 'message': exc.message, 'details': {}},

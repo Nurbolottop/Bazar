@@ -16,6 +16,10 @@ class LoginRateLimited(Exception):
 
     message = 'Слишком много попыток входа. Повторите позже.'
 
+    def __init__(self, retry_after: int = 3600):
+        self.retry_after = max(1, retry_after)
+        super().__init__(self.message)
+
 
 class LoginFailed(Exception):
     def __init__(self, message: str = 'Вход невозможен. Проверьте ИНН.'):
@@ -29,12 +33,32 @@ class PinRequired(Exception):
     message = 'Требуется PIN-код.'
 
 
-def _attempts_last_hour(ip: str | None, device_info: str) -> int:
+def _login_blocked_until(ip: str | None, device_info: str):
+    """Момент, когда лимит попыток освободится, или None, если лимит не превышен.
+
+    По ТЗ лимит считается на устройство (X-Device-Id): 10 попыток в час.
+    Лимит по IP — только страховка от перебора ИНН, и он заметно выше,
+    иначе один офисный NAT (или сеть ревьюеров Apple) блокирует всех сразу.
+    Если клиент не назвал устройство, действует старый строгий лимит по IP.
+    """
     hour_ago = timezone.now() - datetime.timedelta(hours=1)
     qs = TenantLoginLog.objects.filter(created_at__gte=hour_ago)
-    by_ip = qs.filter(ip=ip).count() if ip else 0
-    by_device = qs.filter(user_agent=device_info).count() if device_info else 0
-    return max(by_ip, by_device)
+    checks = []
+    if device_info:
+        checks.append((qs.filter(user_agent=device_info),
+                       settings.TENANT_LOGIN_MAX_ATTEMPTS_PER_HOUR))
+        if ip:
+            checks.append((qs.filter(ip=ip),
+                           settings.TENANT_LOGIN_MAX_ATTEMPTS_PER_IP_HOUR))
+    elif ip:
+        checks.append((qs.filter(ip=ip),
+                       settings.TENANT_LOGIN_MAX_ATTEMPTS_PER_HOUR))
+    for window_qs, limit in checks:
+        attempts = list(window_qs.order_by('-created_at')
+                        .values_list('created_at', flat=True)[:limit])
+        if len(attempts) >= limit:
+            return attempts[-1] + datetime.timedelta(hours=1)
+    return None
 
 
 def tenant_login(*, inn: str, device_info: str = '', ip: str | None = None,
@@ -47,9 +71,11 @@ def tenant_login(*, inn: str, device_info: str = '', ip: str | None = None,
     inn = (inn or '').strip()
     device_info = (device_info or '')[:512]
 
-    if _attempts_last_hour(ip, device_info) >= settings.TENANT_LOGIN_MAX_ATTEMPTS_PER_HOUR:
+    blocked_until = _login_blocked_until(ip, device_info)
+    if blocked_until is not None:
         # Сообщение одинаково для существующего и несуществующего ИНН (ТЗ-02 п. 7.1)
-        raise LoginRateLimited()
+        raise LoginRateLimited(
+            retry_after=int((blocked_until - timezone.now()).total_seconds()) + 1)
 
     tenant = Tenant.objects.filter(inn=inn).first()
     allowed = tenant is not None and tenant.status in (

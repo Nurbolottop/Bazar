@@ -45,6 +45,43 @@ class LoginTests(TestCase):
         with self.assertRaises(services.LoginRateLimited):
             services.tenant_login(inn='0000', ip='5.5.5.5')
 
+    def test_rate_limit_per_device_not_ip(self):
+        """Лимит считается на устройство: NAT-офис не блокирует всех сразу."""
+        for i in range(10):
+            try:
+                services.tenant_login(inn='0000', ip='5.5.5.5', device_info=f'device-{i}')
+            except services.LoginFailed:
+                pass
+        # 11-е устройство с того же IP входит свободно
+        make_tenant(inn='77777777777777')
+        tenant, _ = services.tenant_login(
+            inn='77777777777777', ip='5.5.5.5', device_info='device-new')
+        self.assertEqual(tenant.inn, '77777777777777')
+        # а 11-я попытка с одного и того же устройства — уже лимит
+        for _ in range(10):
+            try:
+                services.tenant_login(inn='0000', ip='6.6.6.6', device_info='same-device')
+            except services.LoginFailed:
+                pass
+        with self.assertRaises(services.LoginRateLimited) as ctx:
+            services.tenant_login(inn='0000', ip='6.6.6.6', device_info='same-device')
+        self.assertTrue(0 < ctx.exception.retry_after <= 3600)
+
+    def test_login_429_uses_x_device_id_and_retry_after(self):
+        """API читает заголовок X-Device-Id и отдаёт 429 с Retry-After."""
+        client = APIClient()
+        for _ in range(10):
+            client.post('/api/v1/auth/login', {'inn': '0000'},
+                        format='json', HTTP_X_DEVICE_ID='review-device')
+        response = client.post('/api/v1/auth/login', {'inn': '0000'},
+                               format='json', HTTP_X_DEVICE_ID='review-device')
+        self.assertEqual(response.status_code, 429)
+        self.assertIn('Retry-After', response.headers)
+        # другое устройство (другой заголовок) с того же адреса не заблокировано
+        response = client.post('/api/v1/auth/login', {'inn': '0000'},
+                               format='json', HTTP_X_DEVICE_ID='other-device')
+        self.assertEqual(response.status_code, 400)
+
     def test_suspended_can_login(self):
         make_tenant(inn='22222222222222', status=Tenant.Status.SUSPENDED)
         tenant, _ = services.tenant_login(inn='22222222222222')
