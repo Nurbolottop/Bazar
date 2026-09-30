@@ -126,12 +126,16 @@
       <b>Новое торговое место</b>
       <button type="button" class="map-modal-close" data-close aria-label="Закрыть">✕</button>
     </div>
-    <label>Номер места</label>
-    <input type="text" id="map-spot-code" placeholder="Например: 125" autocomplete="off">
+    <label>Номер места — или сразу несколько</label>
+    <textarea id="map-spot-code" rows="4" placeholder="125
+126
+127" autocomplete="off" style="width:100%;resize:vertical"></textarea>
+    <div class="muted">Можно вставить столбец номеров из Google Таблицы или Excel —
+      каждая строка станет отдельным местом.</div>
     <label>Раздел рынка</label>
     <select id="map-spot-section"></select>
-    <div class="muted">Созданное место появится в списке «Не размещены» —
-      перетащите его на карту.</div>
+    <div class="muted">Созданные места появятся в списке «Не размещены» —
+      перетащите их на карту.</div>
     <div class="map-modal-actions">
       <button type="button" class="btn" data-close>Отмена</button>
       <button type="button" class="btn primary" id="map-spot-save">Создать место</button>
@@ -148,6 +152,7 @@
     "update": "{% url 'panel:map_position_update' 0 %}",
     "delete": "{% url 'panel:map_position_delete' 0 %}",
     "transfer": "{% url 'panel:map_position_transfer' %}",
+    "duplicate": "{% url 'panel:map_position_duplicate' 0 %}",
     "sectionCreate": "{% url 'panel:map_section_create' %}",
     "spotCreate": "{% url 'panel:map_spot_create' %}",
     "zoneCreate": "{% url 'panel:map_zone_create' %}",

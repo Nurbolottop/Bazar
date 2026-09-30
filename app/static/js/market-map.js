@@ -88,6 +88,7 @@
   let confirmResolve = null;      // встроенное подтверждение (вместо системного confirm)         // {sourceGroup, targetGroup}
   let unplaced = [];
   let sections = [];
+  let copiedPositionId = null;    // Ctrl+C на выбранном месте (только редактор)
   const nodes = new Map();        // position.id -> Konva.Group
   const zoneNodes = new Map();    // zone.id -> Konva.Group
   let selectedZone = null;
@@ -868,20 +869,52 @@
   }
 
   async function createSpot() {
-    const code = el.spotCode.value.trim();
+    const raw = el.spotCode.value.trim();
     const sectionId = parseInt(el.spotSection.value, 10);
-    if (!code) { el.spotCode.focus(); return; }
+    if (!raw) { el.spotCode.focus(); return; }
     if (!sectionId) { setStatus('Сначала создайте раздел рынка', true); return; }
     try {
-      const spot = await api(cfg.urls.spotCreate, 'POST',
-        { code: code, section_id: sectionId });
-      unplaced.push(spot);
+      const result = await api(cfg.urls.spotCreate, 'POST',
+        { codes: raw, section_id: sectionId });
+      const created = result.created || [];
+      const skipped = result.skipped || [];
+      created.forEach(s => unplaced.push(s));
       unplaced.sort((a, b) => a.code.localeCompare(b.code, 'ru'));
       closeModal(el.spotModal);
       el.spotCode.value = '';
       renderProps();   // обновит блок «Не размещены»
-      setStatus('Место ' + spot.code + ' создано — перетащите его на карту');
+      let message = created.length === 1
+        ? 'Место ' + created[0].code + ' создано — перетащите его на карту'
+        : 'Создано мест: ' + created.length + ' — перетащите их из «Не размещены»';
+      if (skipped.length) message += '. Уже существуют: ' + skipped.join(', ');
+      setStatus(message, created.length === 0);
     } catch (e) {}
+  }
+
+  // Ctrl+C / Ctrl+V (Cmd на Mac): копия выбранного места со следующим
+  // свободным номером. e.code — чтобы работало и в русской раскладке.
+  function onCopyPasteKeys(e) {
+    if (!editMode || !(e.metaKey || e.ctrlKey)) return;
+    if (e.code !== 'KeyC' && e.code !== 'KeyV') return;
+    const tag = (document.activeElement && document.activeElement.tagName) || '';
+    if (/INPUT|TEXTAREA|SELECT/.test(tag)) return;
+    if (!el.spotModal.hidden || !el.sectionModal.hidden) return;
+    if (e.code === 'KeyC') {
+      if (window.getSelection && String(window.getSelection())) return;  // копируют текст
+      if (!selected) return;
+      const meta = selected.getAttr('meta');
+      copiedPositionId = meta.id;
+      setStatus('Скопировано: ' + (meta.code || 'контейнер') + ' — Ctrl+V вставит копию');
+      return;
+    }
+    if (!copiedPositionId) return;
+    e.preventDefault();
+    api(urlFor(cfg.urls.duplicate, copiedPositionId), 'POST').then(function (p) {
+      const node = refreshNode(p);
+      select(node);
+      copiedPositionId = p.id;   // повторная вставка — каскадом от копии
+      setStatus('Создана копия: ' + (p.code || 'контейнер'));
+    }).catch(function () {});
   }
 
   // ================================================================ список мест (режим просмотра)
@@ -1149,9 +1182,13 @@
     el.sectionName.addEventListener('keydown', e => {
       if (e.key === 'Enter') { e.preventDefault(); createSection(); } });
     el.spotCode.addEventListener('keydown', e => {
-      if (e.key === 'Enter') { e.preventDefault(); createSpot(); } });
+      // textarea: Enter — новая строка, Ctrl/Cmd+Enter — создать
+      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault(); createSpot();
+      } });
     bindModal(el.sectionModal);
     bindModal(el.spotModal);
+    document.addEventListener('keydown', onCopyPasteKeys);
     el.propsRemove.addEventListener('click', removeSelected);
     el.propW.addEventListener('change', applySizeFromProps);
     el.propH.addEventListener('change', applySizeFromProps);

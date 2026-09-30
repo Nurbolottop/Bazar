@@ -63,6 +63,8 @@ urlpatterns = [
     path('map/api/positions/<int:pk>/', map_views.position_update, name='map_position_update'),
     path('map/api/positions/<int:pk>/delete', map_views.position_delete, name='map_position_delete'),
     path('map/api/positions/transfer', map_views.position_transfer, name='map_position_transfer'),
+    path('map/api/positions/<int:pk>/duplicate', map_views.position_duplicate,
+         name='map_position_duplicate'),
     path('map/api/sections/', map_views.section_create, name='map_section_create'),
     path('map/api/zones/', map_views.zone_create, name='map_zone_create'),
     path('map/api/zones/<int:pk>/', map_views.zone_update, name='map_zone_update'),

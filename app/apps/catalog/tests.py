@@ -139,6 +139,42 @@ class MapApiTests(TestCase):
             content_type='application/json')
         self.assertEqual(response.status_code, 400)
 
+    def test_position_duplicate(self):
+        """Ctrl+C/Ctrl+V: копия места — новый Spot со следующим номером, со сдвигом."""
+        position = MapPosition.objects.create(
+            plan=self.plan, spot=self.spot_a, x=10, y=10, width=90, height=60)
+        response = self.client_web.post(f'/map/api/positions/{position.pk}/duplicate')
+        self.assertEqual(response.status_code, 201)
+        data = response.json()
+        self.assertEqual(data['code'], 'M-03')   # M-01 -> M-02 занят -> M-03
+        self.assertEqual(data['width'], 90)
+        self.assertEqual(data['height'], 60)
+        self.assertEqual(data['x'], 34)
+        copy = Spot.objects.get(code='M-03')
+        self.assertEqual(copy.building, self.spot_a.building)
+        # копия пустого контейнера не создаёт Spot
+        empty = MapPosition.objects.create(
+            plan=self.plan, x=200, y=200, width=80, height=50)
+        spots_before = Spot.objects.count()
+        response = self.client_web.post(f'/map/api/positions/{empty.pk}/duplicate')
+        self.assertEqual(response.status_code, 201)
+        self.assertIsNone(response.json()['spot_id'])
+        self.assertEqual(Spot.objects.count(), spots_before)
+
+    def test_map_spot_mass_create(self):
+        """Вставка столбца из таблицы: несколько номеров за один запрос."""
+        from apps.catalog.models import Building
+        section = Building.objects.create(name='Ряд', code='РЯ')
+        response = self.client_web.post(
+            '/map/api/spots/',
+            json.dumps({'codes': '301\n302\n303\n302\nM-01', 'section_id': section.pk}),
+            content_type='application/json')
+        self.assertEqual(response.status_code, 201)
+        data = response.json()
+        self.assertEqual([s['code'] for s in data['created']], ['301', '302', '303'])
+        self.assertEqual(data['skipped'], ['M-01'])   # уже существует
+        self.assertEqual(Spot.objects.filter(code__in=['301', '302', '303']).count(), 3)
+
     def test_delete_keeps_spot(self):
         position = MapPosition.objects.create(
             plan=self.plan, spot=self.spot_a, x=10, y=10, width=80, height=50)

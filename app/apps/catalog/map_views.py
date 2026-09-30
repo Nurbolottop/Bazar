@@ -6,6 +6,7 @@
 скрытие кнопок на фронте защитой не считается, каждый endpoint проверяет сам.
 """
 import json
+import re
 
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
@@ -291,26 +292,110 @@ def section_create(request):
 @admin_required
 @require_POST
 def map_spot_create(request):
-    """POST /map/api/spots/ — новое торговое место: номер + раздел.
+    """POST /map/api/spots/ — новые торговые места: номера + раздел.
 
-    Создаётся обычный Spot (бизнес-сущность); на карту размещается затем
-    перетаскиванием из «Не размещены» — MapPosition здесь не создаётся.
+    Принимает один номер или сразу несколько (вставленный столбец из таблицы:
+    строки, запятые, точки с запятой, табуляция). Создаются обычные Spot
+    (бизнес-сущности); на карту размещаются затем перетаскиванием из
+    «Не размещены» — MapPosition здесь не создаётся.
     """
     data = _json_body(request)
-    code = (data.get('code') or '').strip()
-    if not code:
+    raw = data.get('codes') if data.get('codes') is not None else data.get('code', '')
+    if isinstance(raw, list):
+        pieces = [str(item) for item in raw]
+    else:
+        pieces = re.split(r'[\n;,\t]+', str(raw))
+    codes, seen = [], set()
+    for piece in pieces:
+        code = piece.strip()
+        if code and code not in seen:
+            seen.add(code)
+            codes.append(code)
+    if not codes:
         return JsonResponse({'error': 'Укажите номер места.'}, status=400)
+    if len(codes) > 500:
+        return JsonResponse({'error': 'За один раз — не больше 500 мест.'}, status=400)
     building = Building.objects.filter(pk=data.get('section_id')).first()
     if building is None:
         return JsonResponse({'error': 'Выберите раздел рынка.'}, status=400)
-    if Spot.objects.filter(code=code).exists():
-        return JsonResponse({'error': f'Место {code} уже существует.'}, status=409)
-    spot = Spot.objects.create(building=building, code=code)
-    audit(action='spot_create', model_name='Spot', object_id=spot.pk,
-          actor=request.user, new_value={'code': code, 'building': building.name},
-          ip=client_ip(request))
-    return JsonResponse({'id': spot.pk, 'code': spot.code,
-                         'building': building.name, 'status': spot.status}, status=201)
+
+    existing = set(Spot.objects.filter(code__in=codes).values_list('code', flat=True))
+    if len(codes) == 1 and codes[0] in existing:
+        # одиночное создание отвечает как раньше — понятной ошибкой
+        return JsonResponse({'error': f'Место {codes[0]} уже существует.'}, status=409)
+
+    created, skipped = [], sorted(existing)
+    with transaction.atomic():
+        for code in codes:
+            if code in existing:
+                continue
+            spot = Spot.objects.create(building=building, code=code)
+            created.append({'id': spot.pk, 'code': spot.code,
+                            'building': building.name, 'status': spot.status})
+        audit(action='spot_create', model_name='Spot',
+              object_id=created[0]['id'] if created else 0,
+              actor=request.user,
+              new_value={'codes': [item['code'] for item in created],
+                         'building': building.name, 'skipped': skipped},
+              ip=client_ip(request))
+    return JsonResponse({'created': created, 'skipped': skipped}, status=201)
+
+
+def _next_free_code(code: str) -> str | None:
+    """Следующий свободный номер: «А-14» → «А-15», без числа — «код-2».
+
+    Сохраняет ведущие нули («007» → «008»). None — не подобрали за 500 шагов.
+    """
+    match = re.match(r'^(.*?)(\d+)$', code)
+    if match:
+        prefix, digits = match.groups()
+        for step in range(1, 501):
+            candidate = f'{prefix}{int(digits) + step:0{len(digits)}d}'
+            if not Spot.objects.filter(code=candidate).exists():
+                return candidate
+        return None
+    for step in range(2, 502):
+        candidate = f'{code}-{step}'
+        if not Spot.objects.filter(code=candidate).exists():
+            return candidate
+    return None
+
+
+@admin_required
+@require_POST
+def position_duplicate(request, pk: int):
+    """POST /map/api/positions/<id>/duplicate/ — копия места (Ctrl+C / Ctrl+V).
+
+    Создаёт новый Spot со следующим свободным номером (раздел, тип и площадь
+    как у оригинала) и его позицию того же размера со сдвигом. Пустой
+    контейнер без Spot копируется просто позицией.
+    """
+    plan = MarketPlan.get_default()
+    source = get_object_or_404(
+        MapPosition.objects.select_related('spot', 'spot__building'), pk=pk)
+
+    x = min(source.x + 24, plan.width - source.width)
+    y = min(source.y + 24, plan.height - source.height)
+
+    with transaction.atomic():
+        spot = None
+        if source.spot_id:
+            code = _next_free_code(source.spot.code)
+            if code is None:
+                return JsonResponse(
+                    {'error': 'Не удалось подобрать свободный номер места.'}, status=409)
+            spot = Spot.objects.create(
+                building=source.spot.building, code=code,
+                spot_type=source.spot.spot_type, area_sqm=source.spot.area_sqm)
+        position = MapPosition.objects.create(
+            plan=plan, spot=spot, x=x, y=y,
+            width=source.width, height=source.height)
+        audit(action='map_position_duplicate', model_name='MapPosition',
+              object_id=position.pk, actor=request.user,
+              new_value={'source': source.pk,
+                         'spot': spot.code if spot else None},
+              ip=client_ip(request))
+    return JsonResponse(_position_payload(position, _debtor_tenant_ids()), status=201)
 
 
 ZONE_MIN = 100
