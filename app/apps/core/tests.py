@@ -35,8 +35,19 @@ class PanelAccessTests(TestCase):
         response = client.get('/')
         self.assertContains(response, 'Общая сумма долга')
 
-    def test_login_lockout_after_5_failures(self):
-        """Блокировка на 15 минут после 5 неудачных попыток (ТЗ-02 п. 7.2)."""
+    def test_login_lockout_disabled_by_default(self):
+        """Блокировка отключена (ADMIN_LOGIN_MAX_ATTEMPTS=0, просьба заказчика):
+        вход возможен даже после серии неудачных попыток."""
+        make_admin('chief')
+        client = Client()
+        for _ in range(6):
+            client.post('/login/', {'username': 'chief', 'password': 'wrong'})
+        response = client.post('/login/', {'username': 'chief', 'password': 'x' * 12})
+        self.assertRedirects(response, '/')
+
+    @override_settings(ADMIN_LOGIN_MAX_ATTEMPTS=5)
+    def test_login_lockout_after_5_failures_when_enabled(self):
+        """Механизм ТЗ-02 п. 7.2 сохранён: включается настройкой."""
         make_admin('chief')
         client = Client()
         for _ in range(5):

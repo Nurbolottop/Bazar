@@ -126,7 +126,13 @@ def revoke_all_tokens(tenant: Tenant) -> int:
 
 
 def admin_login_blocked(username: str) -> bool:
-    """Блокировка входа администратора на 15 минут после 5 неудачных попыток (ТЗ-02 п. 7.2)."""
+    """Блокировка входа администратора после серии неудачных попыток (ТЗ-02 п. 7.2).
+
+    ADMIN_LOGIN_MAX_ATTEMPTS = 0 отключает блокировку полностью;
+    попытки входа при этом по-прежнему пишутся в журнал.
+    """
+    if not settings.ADMIN_LOGIN_MAX_ATTEMPTS:
+        return False
     from .models import AdminLoginLog
     window_start = timezone.now() - datetime.timedelta(
         minutes=settings.ADMIN_LOGIN_LOCKOUT_MINUTES)
