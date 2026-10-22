@@ -53,6 +53,7 @@ def _position_payload(position: MapPosition, debtors: set | None = None) -> dict
         'building': spot.building.name if spot and spot.building_id else None,
         'building_id': spot.building_id if spot else None,
         'tenant': None, 'tenant_id': None, 'has_debt': False,
+        'import_color': position.import_color or None,
     }
     data['category'] = 'free'
     if spot and spot.status == Spot.Status.REPAIR:

@@ -125,7 +125,22 @@
   const urlFor = (template, id) => template.replace('/0/', '/' + id + '/');
 
   // ================================================================ сцена
+  function importColor(hex) {
+    // Заливка из исходной схемы: контрастный текст и приглушённый контур.
+    const h = hex.replace('#', '');
+    const r = parseInt(h.slice(0, 2), 16);
+    const g = parseInt(h.slice(2, 4), 16);
+    const b = parseInt(h.slice(4, 6), 16);
+    const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+    return {
+      fill: hex,
+      stroke: 'rgba(0,0,0,0.30)',
+      text: lum > 150 ? '#1a1a1a' : '#ffffff',
+    };
+  }
+
   function colorFor(p) {
+    if (p.import_color) return importColor(p.import_color);
     if (!p.spot_id) return COLORS.empty;
     return COLORS[p.category] || COLORS.free;
   }

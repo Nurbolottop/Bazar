@@ -136,6 +136,9 @@ class MapPosition(TimestampedModel):
     height = models.FloatField('Высота')
     rotation = models.FloatField('Поворот', default=0)
     shape = models.CharField('Форма', max_length=20, default='rect')
+    import_color = models.CharField(
+        'Цвет из импорта', max_length=9, blank=True, default='',
+        help_text='HEX-заливка из исходной схемы; пусто — цвет по статусу оплаты')
 
     class Meta:
         verbose_name = 'Позиция на карте'
