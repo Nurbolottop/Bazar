@@ -406,7 +406,7 @@ label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 5px
   text-transform: uppercase; color: var(--muted); padding: 12px 0 6px;
   display: flex; justify-content: space-between; }
 .map-list-title span { color: var(--accent); }
-.map-list { max-height: 46vh; overflow-y: auto; }
+.map-list { overflow: visible; }
 .map-item { display: flex; align-items: center; gap: 8px; padding: 7px 8px;
   border-radius: 7px; font-size: 13.5px; min-height: 34px; }
 .map-item b { font-weight: 600; }
@@ -672,8 +672,9 @@ label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 5px
 /* Список мест в левой панели (режим просмотра) */
 #map-view-list { display: flex; flex-direction: column; gap: 8px; min-height: 0; }
 #map-view-list .map-props-title { margin-bottom: 0; }
-#map-view-list input { height: 34px; font-size: 13.5px; }
-.map-list--tall { flex: 1; max-height: none; overflow-y: auto; }
+#map-view-list input { height: 34px; font-size: 13.5px;
+  position: sticky; top: 0; z-index: 3; background: var(--card); }
+.map-list--tall { overflow: visible; }
 .map-item--placed { cursor: pointer; }
 .map-item--placed:hover { background: #f2f5f3; }
 .map-item--placed.is-active { background: var(--accent-soft); }
