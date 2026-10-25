@@ -314,7 +314,7 @@
       fill: c.fill, stroke: c.stroke, strokeWidth: 1.5, cornerRadius: 4,
     });
     const label = new Konva.Text({
-      width: p.width, height: p.height, text: p.code || '·',
+      width: p.width, height: p.height, text: p.label || '',
       align: 'center', verticalAlign: 'middle',
       fontSize: 13, fontStyle: 'bold', fill: c.text,
       fontFamily: '-apple-system, Segoe UI, Roboto, Arial, sans-serif',
@@ -396,7 +396,7 @@
 
   // ================================================================ tooltip
   function showTooltip(p) {
-    let html = '<b>Место ' + (p.code || '—') + '</b>';
+    let html = '<b>' + (p.label || p.code || '—') + '</b>';
     if (p.building) html += '<br>Раздел: ' + p.building;
     if (p.tenant) html += '<br>Арендатор: ' + p.tenant;
     html += '<br>' + statusText(p);
@@ -423,7 +423,7 @@
   // Окошко информации по клику в режиме просмотра
   function showInfo(group) {
     const meta = group.getAttr('meta');
-    el.infoTitle.textContent = 'Место ' + (meta.code || '—');
+    el.infoTitle.textContent = meta.label || meta.code || '—';
     let rows = '';
     const row = (k, v) => '<div class="map-info-row"><span>' + k + '</span><b>' + v + '</b></div>';
     rows += row('Статус', statusText(meta));
@@ -500,7 +500,7 @@
     el.propsSize.hidden = !editMode;         // Ширина/Высота — только в редакторе
     el.propsRemove.hidden = !editMode;       // «Убрать с карты» — только в редакторе
     const meta = selected.getAttr('meta');
-    el.propsCode.textContent = 'Место ' + (meta.code || '—');
+    el.propsCode.textContent = meta.label || meta.code || '—';
     let rows = '';
     rows += propRow('Статус', statusText(meta));
     if (meta.building) rows += propRow('Раздел', meta.building);
@@ -942,7 +942,8 @@
     nodes.forEach(function (group) {
       const meta = group.getAttr('meta');
       if (!meta.code) return;
-      if (query && !meta.code.toLowerCase().includes(query) &&
+      const searchable = (meta.label || meta.code || '');
+      if (query && !searchable.toLowerCase().includes(query) &&
           !(meta.tenant || '').toLowerCase().includes(query)) return;
       const key = meta.building || 'Без раздела';
       if (!bySection.has(key)) bySection.set(key, []);
@@ -1011,7 +1012,7 @@
         const item = document.createElement('div');
         item.className = 'map-item map-item--placed' +
           (selected === group ? ' is-active' : '');
-        item.innerHTML = '<b>' + meta.code + '</b><span class="map-item-sub">' +
+        item.innerHTML = '<b>' + (meta.label || meta.code) + '</b><span class="map-item-sub">' +
           (meta.tenant || 'свободно') + '</span>';
         item.addEventListener('click', function () {
           centerOn(meta, 1);
@@ -1035,7 +1036,7 @@
       const item = document.createElement('div');
       item.className = 'map-item map-item--drag';
       item.draggable = true;
-      item.innerHTML = '<span class="map-item-grip">⋮⋮</span><b>' + s.code +
+      item.innerHTML = '<span class="map-item-grip">⋮⋮</span><b>' + (s.label || s.code) +
         '</b><span class="map-item-sub">' + s.building + '</span>';
       item.addEventListener('dragstart', function (e) {
         e.dataTransfer.setData('text/plain', String(s.id));
@@ -1094,7 +1095,8 @@
       nodes.delete(meta.id);
       select(null);
       if (meta.spot_id) unplaced.push({
-        id: meta.spot_id, code: meta.code, building: meta.building || '', status: meta.status,
+        id: meta.spot_id, code: meta.code, label: meta.label || meta.code,
+        building: meta.building || '', status: meta.status,
       });
       unplaced.sort((a, b) => a.code.localeCompare(b.code, 'ru'));
       renderUnplaced();
@@ -1130,7 +1132,8 @@
     let found = null;
     nodes.forEach(function (group) {
       const meta = group.getAttr('meta');
-      if (!found && meta.code && meta.code.toLowerCase().includes(query)) found = group;
+      const hay = (meta.label || meta.code || '').toLowerCase();
+      if (!found && hay && hay.includes(query)) found = group;
     });
     if (!found) { setStatus('Место «' + query + '» на карте не найдено', true); return; }
     centerOn(found.getAttr('meta'), 1);

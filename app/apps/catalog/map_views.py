@@ -49,6 +49,7 @@ def _position_payload(position: MapPosition, debtors: set | None = None) -> dict
         'updated_at': position.updated_at.isoformat(),
         'spot_id': spot.pk if spot else None,
         'code': spot.code if spot else None,
+        'label': (spot.note or spot.code) if spot else None,
         'status': spot.status if spot else 'empty',
         'building': spot.building.name if spot and spot.building_id else None,
         'building_id': spot.building_id if spot else None,
@@ -109,7 +110,7 @@ def map_plan_json(request):
         ],
         'positions': [_position_payload(p, debtors) for p in positions],
         'unplaced': [
-            {'id': s.pk, 'code': s.code,
+            {'id': s.pk, 'code': s.code, 'label': s.note or s.code,
              'building': s.building.name if s.building_id else 'Без раздела',
              'building_id': s.building_id, 'status': s.status}
             for s in unplaced
