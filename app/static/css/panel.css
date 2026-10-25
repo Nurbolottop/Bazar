@@ -670,7 +670,7 @@ label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 5px
 [hidden] { display: none !important; }
 
 /* Список мест в левой панели (режим просмотра) */
-#map-view-list { display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+#map-view-list { display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; }
 #map-view-list .map-props-title { margin-bottom: 0; }
 #map-view-list input { height: 34px; font-size: 13.5px;
   position: sticky; top: 0; z-index: 3; background: var(--card); }
@@ -678,7 +678,7 @@ label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 5px
 .map-item--placed { cursor: pointer; }
 .map-item--placed:hover { background: #f2f5f3; }
 .map-item--placed.is-active { background: var(--accent-soft); }
-#map-edit-panel { display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+#map-edit-panel { display: flex; flex-direction: column; gap: 10px; flex-shrink: 0; }
 
 /* Модалки карты: создание раздела и места */
 .map-modal { position: fixed; inset: 0; z-index: 90; background: rgba(12,22,18,.5);
