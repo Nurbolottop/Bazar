@@ -944,7 +944,8 @@
     nodes.forEach(function (group) {
       const meta = group.getAttr('meta');
       if (!meta.code) return;
-      const searchable = (meta.label || meta.code || '');
+      const searchable = (meta.label || meta.code || '') +
+        (meta.row ? ' ряд ' + meta.row : '');
       if (query && !searchable.toLowerCase().includes(query) &&
           !(meta.tenant || '').toLowerCase().includes(query)) return;
       const key = meta.building || 'Без раздела';
@@ -1014,8 +1015,9 @@
         const item = document.createElement('div');
         item.className = 'map-item map-item--placed' +
           (selected === group ? ' is-active' : '');
-        item.innerHTML = '<b>' + (meta.label || meta.code) + '</b><span class="map-item-sub">' +
-          (meta.tenant || 'свободно') + '</span>';
+        const rowChip = meta.row ? '<span class="map-item-row">Ряд ' + meta.row + '</span>' : '';
+        item.innerHTML = '<b>' + (meta.label || meta.code) + '</b>' + rowChip +
+          '<span class="map-item-sub">' + (meta.tenant || 'свободно') + '</span>';
         item.addEventListener('click', function () {
           centerOn(meta, 1);
           select(group);
