@@ -426,6 +426,8 @@
     el.infoTitle.textContent = meta.label || meta.code || '—';
     let rows = '';
     const row = (k, v) => '<div class="map-info-row"><span>' + k + '</span><b>' + v + '</b></div>';
+    if (meta.row) rows += row('Ряд', meta.row);
+    rows += row('Место', meta.label || meta.code || '—');
     rows += row('Статус', statusText(meta));
     if (meta.building) rows += row('Раздел', meta.building);
     if (meta.tenant) rows += row('Арендатор', meta.tenant);

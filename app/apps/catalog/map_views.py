@@ -40,6 +40,34 @@ def _debtor_tenant_ids():
         debt_amount__gt=ZERO).values_list('tenant_id', flat=True))
 
 
+# Определение ряда по положению места в нижней сетке плана (ТЗ: раскладка
+# импортирована из Excel). Геометрия та же, что у импортёра: столбец и строка
+# восстанавливаются из координат. Номера рядов за пределами нижней сетки
+# совпадать не обязаны, поэтому там ряд не показываем.
+_ROW_CW = 18.140625 * 7.0          # ширина столбца Excel в px
+_ROW_RH = 17.1 * 4.0 / 3           # высота строки Excel в px
+_ROW_BY_COL = {
+    6: '0', 8: '0', 12: '1', 13: '1', 15: '2', 16: '2', 18: '3', 19: '3',
+    21: '4', 22: '4', 23: '4', 24: '4', 26: '5', 27: '5', 30: '6', 31: '6',
+    34: '7', 35: '7', 38: '8', 39: '8', 41: '9',
+}
+
+
+def _row_label(position: MapPosition) -> str | None:
+    """Номер ряда для места нижней сетки, иначе None."""
+    spot = position.spot
+    if spot is None:
+        return None
+    note = spot.note or ''
+    if any(w in note for w in ('ПРОХОД', 'РЯД', 'МЕТР')):
+        return None
+    col = round(position.x / _ROW_CW) + 1
+    row = round(position.y / _ROW_RH) + 1
+    if 128 <= row <= 166 and col in _ROW_BY_COL:
+        return _ROW_BY_COL[col]
+    return None
+
+
 def _position_payload(position: MapPosition, debtors: set | None = None) -> dict:
     spot = position.spot
     data = {
@@ -55,6 +83,7 @@ def _position_payload(position: MapPosition, debtors: set | None = None) -> dict
         'building_id': spot.building_id if spot else None,
         'tenant': None, 'tenant_id': None, 'has_debt': False,
         'import_color': position.import_color or None,
+        'row': _row_label(position),
     }
     data['category'] = 'free'
     if spot and spot.status == Spot.Status.REPAIR:
