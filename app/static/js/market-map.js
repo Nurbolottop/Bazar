@@ -1015,7 +1015,7 @@
         const item = document.createElement('div');
         item.className = 'map-item map-item--placed' +
           (selected === group ? ' is-active' : '');
-        const rowChip = meta.row ? '<span class="map-item-row">Ряд ' + meta.row + '</span>' : '';
+        const rowChip = meta.row ? '<span class="map-item-row">— Ряд ' + meta.row + '</span>' : '';
         item.innerHTML = '<b>' + (meta.label || meta.code) + '</b>' + rowChip +
           '<span class="map-item-sub">' + (meta.tenant || 'свободно') + '</span>';
         item.addEventListener('click', function () {
