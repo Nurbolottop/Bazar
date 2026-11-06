@@ -20,5 +20,75 @@
     {% empty %}<tr><td colspan="6" class="muted">Место никем не занималось</td></tr>{% endfor %}
   </table>
 </div>
-<a class="btn" href="{% url 'panel:spots' %}">← К списку мест</a>
+
+{% if active_link %}
+<p class="muted">Сейчас место занимает
+  <a href="{% url 'panel:tenant_detail' active_link.tenant_id %}">{{ active_link.tenant.full_name }}</a>.
+  Чтобы привязать другого — сначала освободите место в карточке арендатора.</p>
+{% else %}
+<div class="panel" style="margin-top:16px">
+  <h2>Привязать арендатора к месту</h2>
+  <form method="post" action="{% url 'panel:spot_assign' spot.pk %}">
+    {% csrf_token %}
+    <div class="field">
+      <label class="inline-check"><input type="radio" name="mode" value="existing" checked onchange="spotAssignMode()"> Существующий арендатор</label>
+      &nbsp;&nbsp;
+      <label class="inline-check"><input type="radio" name="mode" value="new" onchange="spotAssignMode()"> Новый арендатор</label>
+    </div>
+
+    <div id="spot-assign-existing">
+      <div class="field"><label>Арендатор</label>
+        <select name="tenant_id" style="width:100%">
+          <option value="">— выберите арендатора —</option>
+          {% for t in tenants %}<option value="{{ t.pk }}">{{ t.full_name }} (ИНН {{ t.inn }})</option>{% endfor %}
+        </select></div>
+    </div>
+
+    <div id="spot-assign-new" hidden>
+      <div class="field"><label>ФИО</label><input type="text" name="full_name" style="width:100%"></div>
+      <div class="field"><label>ИНН</label><input type="text" name="inn" style="width:100%"></div>
+      <div class="field"><label>Телефон</label><input type="text" name="phone" style="width:100%"></div>
+      <p class="muted">Остальные данные (паспорт, фото) можно заполнить позже в карточке арендатора.</p>
+    </div>
+
+    <div class="field"><label>Сумма аренды в месяц, сом</label>
+      <input type="text" name="monthly_amount" required style="width:100%"></div>
+    <div class="field"><label>Категория аренды</label>
+      <select name="rental_category" style="width:100%">
+        {% for value, label in rental_categories %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+      </select></div>
+    <div class="field"><label>Дата начала (пусто — сегодня)</label>
+      <input type="date" name="start_date" style="width:100%"></div>
+
+    <div class="field"><label class="inline-check">
+      <input type="checkbox" name="is_long_term" id="spot-assign-longterm" onchange="spotAssignLong()">
+      Долгосрочная аренда</label></div>
+    <div id="spot-assign-long" hidden>
+      <div class="field"><label>Договор до</label><input type="date" name="contract_until" style="width:100%"></div>
+      <div class="field"><label>Оплата</label>
+        <select name="payment_type" style="width:100%">
+          <option value="">— выберите —</option>
+          {% for value, label in payment_types %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+        </select></div>
+    </div>
+    <div class="field"><label class="inline-check">
+      <input type="checkbox" name="rents_from_market"> Арендует непосредственно у рынка</label></div>
+
+    <button class="btn primary">Привязать арендатора</button>
+  </form>
+</div>
+<script>
+  function spotAssignMode() {
+    var mode = document.querySelector('[name=mode]:checked').value;
+    document.getElementById('spot-assign-existing').hidden = (mode !== 'existing');
+    document.getElementById('spot-assign-new').hidden = (mode !== 'new');
+  }
+  function spotAssignLong() {
+    document.getElementById('spot-assign-long').hidden =
+      !document.getElementById('spot-assign-longterm').checked;
+  }
+</script>
+{% endif %}
+
+<a class="btn" href="{% url 'panel:spots' %}" style="margin-top:14px">← К списку мест</a>
 {% endblock %}

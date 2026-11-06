@@ -1,7 +1,11 @@
 """Панель: корпуса и торговые места (FR-SP-01..06)."""
+from decimal import Decimal, InvalidOperation
+
 from django.contrib import messages
+from django.core.exceptions import ValidationError
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils.dateparse import parse_date
 from django.views.decorators.http import require_POST
 
 from apps.core.panel import admin_required, client_ip, paginate
@@ -121,7 +125,76 @@ def spots_mass_create(request):
 
 @admin_required
 def spot_history(request, pk: int):
-    """История: какие арендаторы и в какие периоды занимали место (FR-SP-06)."""
+    """История: какие арендаторы и в какие периоды занимали место (FR-SP-06).
+
+    Отсюда же можно привязать арендатора к месту (существующего или нового).
+    """
+    from apps.tenants.models import Tenant
+
     spot = get_object_or_404(Spot.objects.select_related('building'), pk=pk)
     history = spot.tenant_spots.select_related('tenant').order_by('-start_date')
-    return render(request, 'panel/spot_history.html', {'spot': spot, 'history': history})
+    active_link = history.filter(is_active=True).first()
+    tenants = None
+    if active_link is None:
+        tenants = Tenant.objects.exclude(
+            status=Tenant.Status.ARCHIVED).order_by('full_name')
+    return render(request, 'panel/spot_history.html', {
+        'spot': spot, 'history': history, 'active_link': active_link,
+        'tenants': tenants,
+        'rental_categories': Tenant.RentalCategory.choices,
+        'payment_types': Tenant.PaymentType.choices,
+    })
+
+
+@admin_required
+@require_POST
+def spot_assign(request, pk: int):
+    """Привязать арендатора к месту прямо с карточки места (FR-SP-05).
+
+    mode=existing — выбрать из списка; mode=new — создать нового и привязать.
+    Расчёт и смена состояния места — в сервисном слое (assign_spot).
+    """
+    from apps.tenants import services as tenant_services
+    from apps.tenants.models import Tenant
+
+    spot = get_object_or_404(Spot, pk=pk)
+
+    if request.POST.get('mode') == 'new':
+        full_name = request.POST.get('full_name', '').strip()
+        inn = request.POST.get('inn', '').strip()
+        phone = request.POST.get('phone', '').strip()
+        if not full_name or not inn:
+            messages.error(request, 'Для нового арендатора укажите ФИО и ИНН.')
+            return redirect('panel:spot_history', pk=pk)
+        if Tenant.objects.filter(inn=inn).exists():
+            messages.error(
+                request, f'Арендатор с ИНН {inn} уже есть — выберите его из списка.')
+            return redirect('panel:spot_history', pk=pk)
+        tenant = Tenant.objects.create(full_name=full_name, inn=inn, phone=phone)
+        audit(action='tenant_create', model_name='Tenant', object_id=tenant.pk,
+              actor=request.user, new_value={'inn': inn, 'full_name': full_name},
+              ip=client_ip(request))
+    else:
+        tenant = get_object_or_404(Tenant, pk=request.POST.get('tenant_id'))
+
+    try:
+        amount = Decimal(str(request.POST.get('monthly_amount', '')).replace(',', '.'))
+    except InvalidOperation:
+        messages.error(request, 'Неверный формат суммы аренды.')
+        return redirect('panel:spot_history', pk=pk)
+
+    is_long_term = request.POST.get('is_long_term') == 'on'
+    try:
+        tenant_services.assign_spot(
+            tenant=tenant, spot=spot, monthly_amount=amount, actor=request.user,
+            start_date=parse_date(request.POST.get('start_date', '') or ''),
+            rental_category=request.POST.get('rental_category', 'self'),
+            is_long_term=is_long_term,
+            contract_until=parse_date(request.POST.get('contract_until', '') or ''),
+            payment_type=request.POST.get('payment_type', ''),
+            rents_from_market=request.POST.get('rents_from_market') == 'on')
+        messages.success(
+            request, f'Арендатор {tenant.full_name} привязан к месту {spot.code}.')
+    except ValidationError as exc:
+        messages.error(request, '; '.join(exc.messages))
+    return redirect('panel:spot_history', pk=pk)

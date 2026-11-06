@@ -76,6 +76,7 @@ urlpatterns = [
     path('spots/create/', catalog.spot_create, name='spot_create'),
     path('spots/mass-create/', catalog.spots_mass_create, name='spots_mass_create'),
     path('spots/<int:pk>/history/', catalog.spot_history, name='spot_history'),
+    path('spots/<int:pk>/assign/', catalog.spot_assign, name='spot_assign'),
     path('buildings/create/', catalog.building_create, name='building_create'),
 
     # Должники, отчёты
