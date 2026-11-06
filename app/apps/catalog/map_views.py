@@ -134,7 +134,7 @@ def map_plan_json(request):
     placed_spot_ids = [p.spot_id for p in positions if p.spot_id]
     unplaced = Spot.objects.exclude(pk__in=placed_spot_ids) \
         .select_related('building').order_by('building__code', 'code')
-    return JsonResponse({
+    response = JsonResponse({
         'plan': {
             'id': plan.pk, 'name': plan.name,
             'width': plan.width, 'height': plan.height,
@@ -158,6 +158,9 @@ def map_plan_json(request):
             for s in unplaced
         ],
     })
+    # Данные карты не кэшируются браузером — изменения видны сразу после обновления.
+    response['Cache-Control'] = 'no-store, max-age=0'
+    return response
 
 
 def _json_body(request) -> dict:
