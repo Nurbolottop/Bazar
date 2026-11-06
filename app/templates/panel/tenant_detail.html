@@ -100,10 +100,20 @@
       <form method="post" action="{% url 'panel:tenant_assign_spot' tenant.pk %}">
         {% csrf_token %}
         <div class="field"><label>Свободное место</label>
-          <select name="spot_id" required style="width:100%">
-            <option value="">— выберите место —</option>
-            {% for spot in free_spots %}<option value="{{ spot.pk }}">{{ spot.code }} ({% if spot.building %}{{ spot.building.name }}{% else %}без раздела{% endif %})</option>{% endfor %}
-          </select></div>
+          <div class="combo" id="spot-combo">
+            <input type="text" id="spot-combo-input" autocomplete="off"
+                   placeholder="Начните вводить номер места…" style="width:100%">
+            <input type="hidden" name="spot_id" id="spot-combo-value" required>
+            <div class="combo-list" id="spot-combo-list" hidden>
+              {% for spot in free_spots %}
+              <div class="combo-opt" data-value="{{ spot.pk }}"
+                   data-search="{{ spot.note|default:spot.code }} {% if spot.building %}{{ spot.building.name }}{% endif %}">
+                {{ spot.note|default:spot.code }}{% if spot.building %} <span class="muted">· {{ spot.building.name }}</span>{% endif %}
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+          <div class="muted" id="spot-combo-empty" hidden style="font-size:12px;padding-top:4px">Ничего не найдено</div></div>
         <div class="field"><label class="inline-check">
           <input type="checkbox" name="is_long_term" id="assign-longterm">
           Долгосрочная аренда</label></div>
@@ -217,6 +227,46 @@
 (function () {
   const modal = document.getElementById('assign-modal');
   document.getElementById('assign-open').addEventListener('click', () => { modal.hidden = false; });
+
+  // Поиск свободного места: ввод фильтрует список, клик выбирает.
+  (function () {
+    const input = document.getElementById('spot-combo-input');
+    const hidden = document.getElementById('spot-combo-value');
+    const list = document.getElementById('spot-combo-list');
+    const empty = document.getElementById('spot-combo-empty');
+    if (!input) return;
+    const opts = Array.from(list.querySelectorAll('.combo-opt'));
+    opts.forEach(o => o.dataset.key = (o.dataset.search || '').toLowerCase());
+
+    function openList() { list.hidden = false; }
+    function closeList() { list.hidden = true; }
+    function filter() {
+      const q = input.value.trim().toLowerCase();
+      let shown = 0;
+      opts.forEach(o => {
+        const ok = !q || o.dataset.key.includes(q);
+        o.hidden = !ok;
+        if (ok) shown++;
+      });
+      empty.hidden = shown !== 0;
+      openList();
+    }
+    input.addEventListener('focus', filter);
+    input.addEventListener('input', function () { hidden.value = ''; filter(); });
+    opts.forEach(o => o.addEventListener('mousedown', function (e) {
+      e.preventDefault();
+      hidden.value = o.dataset.value;
+      input.value = (o.dataset.search || '').trim();
+      closeList();
+    }));
+    document.addEventListener('click', e => {
+      if (!document.getElementById('spot-combo').contains(e.target)) closeList();
+    });
+    const form = input.closest('form');
+    form.addEventListener('submit', function (e) {
+      if (!hidden.value) { e.preventDefault(); input.focus(); filter(); }
+    });
+  })();
 
   // Долгосрочная аренда: галочка открывает «Договор до» и выбор оплаты;
   // поля «в месяц» и «оплачено» выходят только после выбора полной/частичной оплаты.

@@ -126,6 +126,14 @@ def tenant_detail(request, pk: int):
     claims = tenant.claims.order_by('-submitted_at')[:15]
     adjustments = tenant.adjustments.order_by('-created_at')[:15]
     free_spots = Spot.objects.filter(status=Spot.Status.FREE).select_related('building')
+    # В выбор места не попадают служебные подписи карты (проходы, ряды, метры и т.п.)
+    _junk = ('ПРОХОД', 'РЯД', 'МЕТР', 'ЗАНЯТО', 'КАНАЛ', 'МОСТ', 'АЖАТКАНА')
+    free_spots = [
+        s for s in free_spots
+        if not any(w in (s.note or s.code).upper() for w in _junk)
+    ]
+    free_spots.sort(key=lambda s: (
+        s.building.name if s.building_id else '', (s.note or s.code)))
 
     return render(request, 'panel/tenant_detail.html', {
         'tenant': tenant, 'balance': balance, 'tenant_spots': tenant_spots,
